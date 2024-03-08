@@ -1,10 +1,13 @@
 library(shiny)
 library(ggplot2)
 library(ggpubr)
-library(jsmodule)
+# library(jsmodule)
 
+library(shinyjs)
+library(logging)
 library(data.table)
 source("../module/bar.R")
+
 
 ui <- fluidPage(
   sidebarLayout(
@@ -15,18 +18,33 @@ ui <- fluidPage(
       plotOutput("bar_plot"),
       ggplotdownUI("bar")
     )
-  )
+  ),
+  useShinyjs(),
 )
 
+
 d1 <- mtcars
-d1
-
-
 d1$cyl <- as.factor(d1$cyl)
 d1$gear <- as.factor(d1$gear)
 
 
+basicConfig()
+
+options(shiny.error = browser)
+
+options(shiny.error = function() {
+  logging::logerror(sys.calls() %>% as.character %>% paste(collapse = ", "))
+})
+
+
 server <- function(input, output, session) {
+  
+  printLogJs <- function(x, ...) {
+    logjs(x)
+    T
+  }
+  addHandler(printLogJs)
+  
   data <- reactive(d1)
   data.label <- reactive(jstable::mk.lev(d1))
 

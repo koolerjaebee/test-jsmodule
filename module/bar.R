@@ -48,6 +48,10 @@ barUI <- function(id, label = "barplot") {
     checkboxInput(ns("fill"), "Fill"),
     checkboxInput(ns("mean"), "Mean_SE"),
     checkboxInput(ns("jitter"), "Jitter"),
+    selectInput(ns("pvalue"), "Pvalue",
+                choices = c("T-test"="ttest", "ANOVA"="anova", "Wilcoxon"="wilcox", "Kruskal-Wallis"="kruskal"),
+                multiple = TRUE,
+                ),
     uiOutput(ns("subvar")),
     uiOutput(ns("subval"))
   )
@@ -209,13 +213,20 @@ barServer <- function(id, data, data_label, data_varStruct = NULL, nfactor.limit
         }
         outUI
       })
-
+      
+      
       barInput <- reactive({
         req(c(input$x_bar, input$y_bar, input$strata))
         data <- data.table(data())
+        
+        
+        print(uniqueN(data[,.SD, .SDcols=input$x_bar]))
+        # print(length(data[, .SD, .SDcols=input$x_bar]))
+        
+        
         label <- data_label()
         color <- ifelse(input$strata == "None", "black", input$strata)
-        fill <- "pink" # checking for fixed module applies
+        fill <- "white"
         if (input$fill) {
           fill <- ifelse(input$strata == "None", input$x_bar, input$strata)
         }
@@ -237,17 +248,23 @@ barServer <- function(id, data, data_label, data_varStruct = NULL, nfactor.limit
           add <- c("jitter", "mean_se")
         }
 
-
-
+        
         ggpubr::ggbarplot(data, input$x_bar, input$y_bar,
           color = color, add = add, add.params = add.params, conf.int = input$lineci,
           xlab = label[variable == input$x_bar, var_label][1],
           ylab = label[variable == input$y_bar, var_label][1], na.rm = T,
           position = position_dodge(), fill = fill,
-        ) + stat_compare_means(aes(
-          label = scales::label_pvalue(add_p = TRUE)(..p..)
-        ))# is P Value checked logic needed
-      })
+        )+{if(uniqueN(data[,.SD, .SDcols=input$x_bar])>2){
+          geom_pwc(aes(
+            label = scales::label_pvalue(add_p = TRUE)(..p..)
+          ))
+        }else{
+          stat_compare_means(aes(
+            label = scales::label_pvalue(add_p = TRUE)(..p..)
+          ))
+            
+          }}
+        })
 
       output$downloadControls <- renderUI({
         tagList(
