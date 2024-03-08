@@ -48,10 +48,19 @@ barUI <- function(id, label = "barplot") {
     checkboxInput(ns("fill"), "Fill"),
     checkboxInput(ns("mean"), "Mean_SE"),
     checkboxInput(ns("jitter"), "Jitter"),
-    selectInput(ns("pvalue"), "Pvalue",
-                choices = c("T-test"="ttest", "ANOVA"="anova", "Wilcoxon"="wilcox", "Kruskal-Wallis"="kruskal"),
-                multiple = TRUE,
+    
+    # Need to add reactive logic for pvalue select and pair select
+    # uiOutput(ns("pvalue")),
+    selectizeInput(ns("pvalue"), "P value test",
+                choices = c("T-test"="ttest", "Wilcoxon"="wilcox", "ANOVA"="anova", "Kruskal-Wallis"="kruskal")
                 ),
+    checkboxInput(ns("isPair"),"Pair sample P value?"),
+    selectizeInput(ns("p_pvalue"), "Pair sample P value test",
+                choices = c("T-test"="ttest", "Wilcoxon"="wilcox")
+                ),
+    checkboxInput(ns("isSign"), "Significance Level"),
+    # uiOutput(ns("pvalue")) END
+    
     uiOutput(ns("subvar")),
     uiOutput(ns("subval"))
   )
@@ -167,7 +176,29 @@ barServer <- function(id, data, data_label, data_varStruct = NULL, nfactor.limit
           selected = unlist(strata_select)[1]
         )
       })
-
+      
+      
+      ## pvalue output UI
+      output$pvalue <- renderUI({
+        
+        # Check sample number and set choices
+        # selectizeInput(ns("pvalue"), "P value test",
+        #                choices = c("T-test"="ttest", "Wilcoxon"="wilcox", "ANOVA"="anova", "Kruskal-Wallis"="kruskal")
+        # )
+        
+        # Check sample number and set visibility
+        # checkboxInput(ns("isPair"),"Pair sample P value?")
+        
+        # Check sample number and set visibility
+        # selectizeInput(ns("p_pvalue"), "Pair sample P value test",
+        #                choices = c("T-test"="ttest", "Wilcoxon"="wilcox")
+        # )
+        
+        # checkboxInput(ns("isSign"), "Significance Level"),
+        
+        NULL
+      })
+      
 
       observeEvent(input$subcheck, {
         output$subvar <- renderUI({
@@ -218,12 +249,6 @@ barServer <- function(id, data, data_label, data_varStruct = NULL, nfactor.limit
       barInput <- reactive({
         req(c(input$x_bar, input$y_bar, input$strata))
         data <- data.table(data())
-        
-        
-        print(uniqueN(data[,.SD, .SDcols=input$x_bar]))
-        # print(length(data[, .SD, .SDcols=input$x_bar]))
-        
-        
         label <- data_label()
         color <- ifelse(input$strata == "None", "black", input$strata)
         fill <- "white"
@@ -254,16 +279,19 @@ barServer <- function(id, data, data_label, data_varStruct = NULL, nfactor.limit
           xlab = label[variable == input$x_bar, var_label][1],
           ylab = label[variable == input$y_bar, var_label][1], na.rm = T,
           position = position_dodge(), fill = fill,
-        )+{if(uniqueN(data[,.SD, .SDcols=input$x_bar])>2){
+        ) +
+          stat_compare_means(aes(
+            label = scales::label_pvalue(add_p = TRUE)(..p..)
+            ),
+            size = 6,
+            label.x.npc = "center",
+            label.y.npc = "top"
+            ) +
+              {if(uniqueN(data[,.SD, .SDcols=input$x_bar]) > 2){
           geom_pwc(aes(
             label = scales::label_pvalue(add_p = TRUE)(..p..)
           ))
-        }else{
-          stat_compare_means(aes(
-            label = scales::label_pvalue(add_p = TRUE)(..p..)
-          ))
-            
-          }}
+        }}
         })
 
       output$downloadControls <- renderUI({
