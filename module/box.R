@@ -100,6 +100,7 @@ boxUI <- function(id, label = "boxplot") {
 #' @importFrom ggplot2 ggsave
 #' @importFrom rvg dml
 #' @importFrom officer read_pptx add_slide ph_with ph_location
+#' @importFrom scales label_pvalue
 
 
 

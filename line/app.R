@@ -1,10 +1,11 @@
 library(shiny)
-library(ggplot2)
+
+source("../module/line.R")
+source("../module/kaplan.R")
+source("../module/regress.R")
+library(data.table)
 library(ggpubr)
 
-
-library(data.table)
-source("../module/line.R")
 
 ui <- fluidPage(
   sidebarLayout(
@@ -17,6 +18,7 @@ ui <- fluidPage(
     )
   )
 )
+
 
 d1 <- mtcars
 d1$cyl <- as.factor(d1$cyl)
