@@ -175,33 +175,34 @@ barServer <- function(id, data, data_label, data_varStruct = NULL, nfactor.limit
         if (vlist()$nclass_factor[nclass_xbar] < 3) {
           # Check sample number and set choices
           tagList(
-            selectizeInput(
+            checkboxInput(session$ns("isPvalue"), "P value?"),
+            radioButtons(
               session$ns("pvalue"),
               "P value test",
+              inline = TRUE,
               choices = c("T-test"="t.test", "Wilcoxon"="wilcox.test"),
-            ),
-            
+            )
           )
         } else {
           tagList(
-            selectizeInput(
+            checkboxInput(session$ns("isPvalue"), "P value?"),
+            radioButtons(
               session$ns("pvalue"),
               "P valuse test",
+              inline = TRUE,
               choices = c("ANOVA"="anova", "Kruskal-Wallis"="kruskal.test")
-              ),
-            
+            ),
             # Check sample number and set visibility
             checkboxInput(session$ns("isPair"), "Pair sample P value?"),
             
             # Check sample number and set visibility
-            selectizeInput(
+            radioButtons(
               session$ns("p_pvalue"),
               "Pair sample P value test",
+              inline = TRUE,
               choices = c("T-test"="t.test", "Wilcoxon"="wilcox.test")
             )
-            
-            
-            )
+          )
         }
         })
       
@@ -254,6 +255,7 @@ barServer <- function(id, data, data_label, data_varStruct = NULL, nfactor.limit
       
       barInput <- reactive({
         req(c(input$x_bar, input$y_bar, input$strata, input$pvalue, input$p_pvalue))
+        req(input$isPvalue != "None")
         req(input$isPair != "None")
         
         data <- data.table(data())
@@ -287,15 +289,19 @@ barServer <- function(id, data, data_label, data_varStruct = NULL, nfactor.limit
           ylab = label[variable == input$y_bar, var_label][1], na.rm = T,
           position = position_dodge(), fill = fill,
         ) +
-          stat_compare_means(
-            method = input$pvalue,
-            aes(
-              label = scales::label_pvalue(add_p = TRUE)(..p..)
-              ),
-              size = 6,
-              label.x.npc = "center",
-              label.y.npc = "top"
-            ) +
+          {
+            if (input$isPvalue) {
+              stat_compare_means(
+                method = input$pvalue,
+                aes(
+                  label = scales::label_pvalue(add_p = TRUE)(..p..)
+                ),
+                size = 6,
+                label.x.npc = "center",
+                label.y.npc = "top"
+              )
+            }
+          } +
               {if (input$isPair){
           geom_pwc(
             method = input$p_pvalue,

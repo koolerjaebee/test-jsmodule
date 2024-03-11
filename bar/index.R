@@ -1,7 +1,6 @@
 library(shiny)
 library(ggplot2)
 library(ggpubr)
-# library(jsmodule)
 
 library(shinyjs)
 library(logging)
@@ -26,6 +25,7 @@ ui <- fluidPage(
 d1 <- mtcars
 d1$cyl <- as.factor(d1$cyl)
 d1$gear <- as.factor(d1$gear)
+d1$vs <- as.factor(d1$vs)
 
 
 basicConfig()

@@ -47,6 +47,7 @@ boxUI <- function(id, label = "boxplot") {
     checkboxInput(ns("errorbar"), "Errorbar"),
     checkboxInput(ns("jitter"), "Points"),
     checkboxInput(ns("fillcolor"), "Fill"),
+    uiOutput(ns("pvalue")),  # new feat. pvalue on plot
     uiOutput(ns("subvar")),
     uiOutput(ns("subval"))
   )
@@ -162,6 +163,47 @@ boxServer <- function(id, data, data_label, data_varStruct = NULL, nfactor.limit
           selected = unlist(strata_select)[1]
         )
       })
+      
+      
+      ## pvalue output UI
+      output$pvalue <- renderUI({
+        req(!is.null(input$x_box))
+        
+        nclass_xbox <- input$x_box
+        
+        if (vlist()$nclass_factor[nclass_xbox] < 3) {
+          # Check sample number and set choices
+          tagList(
+            checkboxInput(session$ns("isPvalue"), "P value?"),
+            radioButtons(
+              session$ns("pvalue"),
+              "P value test",
+              inline = TRUE,
+              choices = c("T-test"="t.test", "Wilcoxon"="wilcox.test"),
+            )
+          )
+        } else {
+          tagList(
+            checkboxInput(session$ns("isPvalue"), "P value?"),
+            radioButtons(
+              session$ns("pvalue"),
+              "P valuse test",
+              inline = TRUE,
+              choices = c("ANOVA"="anova", "Kruskal-Wallis"="kruskal.test")
+            ),
+            # Check sample number and set visibility
+            checkboxInput(session$ns("isPair"), "Pair sample P value?"),
+            
+            # Check sample number and set visibility
+            radioButtons(
+              session$ns("p_pvalue"),
+              "Pair sample P value test",
+              inline = TRUE,
+              choices = c("T-test"="t.test", "Wilcoxon"="wilcox.test")
+            )
+          )
+        }
+      })
 
 
       observeEvent(input$subcheck, {
@@ -211,6 +253,9 @@ boxServer <- function(id, data, data_label, data_varStruct = NULL, nfactor.limit
 
       boxInput <- reactive({
         req(c(input$x_box, input$y_box, input$strata))
+        req(input$isPvalue != "None")
+        req(input$isPair != "None")
+        
         data <- data.table(data())
         label <- data_label()
         color <- ifelse(input$strata == "None", input$x_box, input$strata)
@@ -230,13 +275,32 @@ boxServer <- function(id, data, data_label, data_varStruct = NULL, nfactor.limit
         if (input$fillcolor) {
           fillcolor <- "gray"
         }
-
         ggpubr::ggboxplot(data, input$x_box, input$y_box,
           color = color, add = add, add.params = add.params, conf.int = input$lineci,
           xlab = label[variable == input$x_box, var_label][1],
           ylab = label[variable == input$y_box, var_label][1], na.rm = T, fill = fillcolor, error.plot = "errorbar",
           bxp.errorbar = input$errorbar
-        )
+        ) +
+          {
+            if (input$isPvalue) {
+              stat_compare_means(
+                method = input$pvalue,
+                aes(
+                  label = scales::label_pvalue(add_p = TRUE)(..p..)
+                ),
+                size = 6,
+                label.x.npc = "center",
+                label.y.npc = "top"
+              )
+            }
+          } +
+          {if (input$isPair){
+            geom_pwc(
+              method = input$p_pvalue,
+              aes(
+                label = scales::label_pvalue(add_p = TRUE)(..p..)
+              ))
+          }}
       })
 
       output$downloadControls <- renderUI({

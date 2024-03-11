@@ -48,6 +48,7 @@ lineUI <- function(id, label = "lineplot") {
     checkboxInput(ns("linetype"), "Linetype"),
     checkboxInput(ns("jitter"), "Jitter"),
     checkboxInput(ns("rev_y"), "Reverse Y-axis"),
+    uiOutput(ns("pvalue")),  # new feat. pvalue on plot
     uiOutput(ns("subvar")),
     uiOutput(ns("subval")),
     uiOutput(ns("size")),
@@ -166,7 +167,48 @@ lineServer <- function(id, data, data_label, data_varStruct = NULL, nfactor.limi
         )
       })
 
-
+      
+      ## pvalue output UI
+      output$pvalue <- renderUI({
+        req(!is.null(input$x_line))
+        
+        nclass_xbar <- input$x_line
+        
+        if (vlist()$nclass_factor[nclass_xbar] < 3) {
+          # Check sample number and set choices
+          tagList(
+            checkboxInput(session$ns("isPvalue"), "P value?"),
+            radioButtons(
+              session$ns("pvalue"),
+              "P value test",
+              inline = TRUE,
+              choices = c("T-test"="t.test", "Wilcoxon"="wilcox.test"),
+            )
+          )
+        } else {
+          tagList(
+            checkboxInput(session$ns("isPvalue"), "P value?"),
+            radioButtons(
+              session$ns("pvalue"),
+              "P valuse test",
+              inline = TRUE,
+              choices = c("ANOVA"="anova", "Kruskal-Wallis"="kruskal.test")
+            ),
+            # Check sample number and set visibility
+            checkboxInput(session$ns("isPair"), "Pair sample P value?"),
+            
+            # Check sample number and set visibility
+            radioButtons(
+              session$ns("p_pvalue"),
+              "Pair sample P value test",
+              inline = TRUE,
+              choices = c("T-test"="t.test", "Wilcoxon"="wilcox.test")
+            )
+          )
+        }
+      })
+      
+      
       observeEvent(input$subcheck, {
         output$subvar <- renderUI({
           req(input$subcheck == T)
@@ -224,6 +266,9 @@ lineServer <- function(id, data, data_label, data_varStruct = NULL, nfactor.limi
 
       lineInput <- reactive({
         req(c(input$x_line, input$y_line, input$strata))
+        req(input$isPvalue != "None")
+        req(input$isPair != "None")
+        
         data <- data.table(data())
         label <- data_label()
         add <- switch(input$options,
@@ -268,7 +313,27 @@ lineServer <- function(id, data, data_label, data_varStruct = NULL, nfactor.limi
           size = input$size,
           point.size = input$pointsize,
           linetype = linetype
-        )
+        ) +
+          {
+            if (input$isPvalue) {
+              stat_compare_means(
+                method = input$pvalue,
+                aes(
+                  label = scales::label_pvalue(add_p = TRUE)(..p..)
+                ),
+                size = 6,
+                label.x.npc = "center",
+                label.y.npc = "top"
+              )
+            }
+          } +
+          {if (input$isPair){
+            geom_pwc(
+              method = input$p_pvalue,
+              aes(
+                label = scales::label_pvalue(add_p = TRUE)(..p..)
+              ))
+          }}
 
         if (input$rev_y) {
           res.plot <- res.plot + ggplot2::scale_y_reverse()
