@@ -183,12 +183,15 @@ barServer <- function(id, data, data_label, data_varStruct = NULL, nfactor.limit
       output$pvalue <- renderUI({
         req(!is.null(input$x_bar))
         
-        nclass_xbar <- input$x_bar
+        nclass.xbar <- input$x_bar
+        nclass.factor <- vlist()$nclass_factor[nclass.xbar]
         
-        if (vlist()$nclass_factor[nclass_xbar] < 3) {
+        value.isPvalue <- isolate(input$isPvalue)
+        
+        if (nclass.factor < 3) {
           # Check sample number and set choices
           tagList(
-            checkboxInput(session$ns("isPvalue"), "P value?"),
+            checkboxInput(session$ns("isPvalue"), "P value?", value = value.isPvalue),
             radioButtons(
               session$ns("pvalue"),
               "P value test",
@@ -198,7 +201,7 @@ barServer <- function(id, data, data_label, data_varStruct = NULL, nfactor.limit
           )
         } else {
           tagList(
-            checkboxInput(session$ns("isPvalue"), "P value?"),
+            checkboxInput(session$ns("isPvalue"), "P value?", value = value.isPvalue),
             radioButtons(
               session$ns("pvalue"),
               "P valuse test",
@@ -217,7 +220,14 @@ barServer <- function(id, data, data_label, data_varStruct = NULL, nfactor.limit
             )
           )
         }
-        })
+      })
+      
+      # Refactoring render UI depends on nclass factor numbers
+      
+      # Debugging
+      observeEvent(input$isPair, {
+        message(paste0("input :", input))
+      })
       
 
       observeEvent(input$subcheck, {
@@ -296,11 +306,14 @@ barServer <- function(id, data, data_label, data_varStruct = NULL, nfactor.limit
           add <- c("jitter", "mean_se")
         }
         
+        pval.name <- input$pvalue
+        ppval.name <- input$p_pvalue
+        
         if (is.null(input$pvalfont)) {
-          pval.font.size = c(4, 4)
+          pval.font.size = c(4, 4, 0.4)
           pval.coord = c(0.5, 1)
         } else {
-          pval.font.size = c(input$pvalfont, input$p_pvalfont)
+          pval.font.size = c(input$pvalfont, input$p_pvalfont, input$p_pvalfont / 10)
           pval.coord = c(input$pvalx, input$pvaly)
         }
 
@@ -314,7 +327,7 @@ barServer <- function(id, data, data_label, data_varStruct = NULL, nfactor.limit
           {
             if (input$isPvalue) {
               stat_compare_means(
-                method = input$pvalue,
+                method = pval.name,
                 size = pval.font.size[1],
                 label.x.npc = pval.coord[1],
                 label.y.npc = pval.coord[2],
@@ -325,10 +338,10 @@ barServer <- function(id, data, data_label, data_varStruct = NULL, nfactor.limit
             }
           } +
               {
-                if (input$isPair) {
+                if (input$isPair && vlist()$nclass_factor[input$x_bar] > 2) {
                   geom_pwc(
-                    method = input$p_pvalue,
-                    size = pval.font.size[2]/10,
+                    method = ppval.name,
+                    size = pval.font.size[3],
                     label.size = pval.font.size[2],
                     aes(
                       label = scales::label_pvalue(add_p = TRUE)(..p..)
@@ -395,6 +408,7 @@ barServer <- function(id, data, data_label, data_varStruct = NULL, nfactor.limit
       
       # option dropdown menu
       output$option_bar <- renderUI({
+        req(!is.null(input$isPair))
         req(input$isPair != "None")
         
         if (input$isPair) {
