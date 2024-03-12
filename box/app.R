@@ -4,6 +4,7 @@ source("../module/box.R", local = TRUE)
 source("../module/kaplan.R", local = TRUE)
 source("../module/regress.R", local = TRUE)
 library(data.table)
+library(ggpubr)
 
 
 ui <- fluidPage(

@@ -1,10 +1,10 @@
 library(shiny)
 
 source("../module/bar.R")
-source("../module/kaplan.R")
 source("../module/regress.R")
 library(data.table)
 library(ggpubr)
+library(scales)
 
 
 ui <- fluidPage(
@@ -13,6 +13,7 @@ ui <- fluidPage(
       barUI("bar")
     ),
     mainPanel(
+      optionUI("bar"),
       plotOutput("bar_plot"),
       ggplotdownUI("bar")
     )

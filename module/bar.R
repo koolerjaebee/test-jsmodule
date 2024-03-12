@@ -55,6 +55,19 @@ barUI <- function(id, label = "barplot") {
 }
 
 
+# plot option
+optionUI <- function(id) {
+  # Create a namespace function using the provided id
+  ns <- NS(id)
+
+  shinyWidgets::dropdownButton(
+    uiOutput(ns("option_bar")),
+    circle = TRUE, status = "danger", icon = icon("gear"), width = "300px",
+    tooltip = shinyWidgets::tooltipOptions(title = "Click to see other options !")
+  )
+}
+
+
 #' @title barServer: shiny module server for barplot.
 #' @description Shiny module server for barplot.
 #' @param id id
@@ -254,9 +267,9 @@ barServer <- function(id, data, data_label, data_varStruct = NULL, nfactor.limit
       
       
       barInput <- reactive({
-        req(c(input$x_bar, input$y_bar, input$strata, input$pvalue, input$p_pvalue))
-        req(input$isPvalue != "None")
+        req(c(input$x_bar, input$y_bar, input$strata, input$pvalue, input$pvalx, input$pvaly, input$pvalfont, input$p_pvalue, input$p_pvalfont))
         req(input$isPair != "None")
+        req(input$isPvalue != "None")
         
         data <- data.table(data())
         label <- data_label()
@@ -282,7 +295,16 @@ barServer <- function(id, data, data_label, data_varStruct = NULL, nfactor.limit
         if (input$mean & input$jitter) {
           add <- c("jitter", "mean_se")
         }
+        
+        if (is.null(input$pvalfont)) {
+          pval.font.size = c(4, 4)
+          pval.coord = c(0.5, 1)
+        } else {
+          pval.font.size = c(input$pvalfont, input$p_pvalfont)
+          pval.coord = c(input$pvalx, input$pvaly)
+        }
 
+        
         ggpubr::ggbarplot(data, input$x_bar, input$y_bar,
           color = color, add = add, add.params = add.params, conf.int = input$lineci,
           xlab = label[variable == input$x_bar, var_label][1],
@@ -293,22 +315,26 @@ barServer <- function(id, data, data_label, data_varStruct = NULL, nfactor.limit
             if (input$isPvalue) {
               stat_compare_means(
                 method = input$pvalue,
+                size = pval.font.size[1],
+                label.x.npc = pval.coord[1],
+                label.y.npc = pval.coord[2],
                 aes(
                   label = scales::label_pvalue(add_p = TRUE)(..p..)
                 ),
-                size = 6,
-                label.x.npc = "center",
-                label.y.npc = "top"
               )
             }
           } +
-              {if (input$isPair){
-          geom_pwc(
-            method = input$p_pvalue,
-            aes(
-              label = scales::label_pvalue(add_p = TRUE)(..p..)
-          ))
-        }}
+              {
+                if (input$isPair) {
+                  geom_pwc(
+                    method = input$p_pvalue,
+                    size = pval.font.size[2]/10,
+                    label.size = pval.font.size[2],
+                    aes(
+                      label = scales::label_pvalue(add_p = TRUE)(..p..)
+                      ),
+                  )
+                  }}
         })
 
       output$downloadControls <- renderUI({
@@ -365,11 +391,50 @@ barServer <- function(id, data, data_label, data_varStruct = NULL, nfactor.limit
           )
         }
       )
+      
+      
+      # option dropdown menu
+      output$option_bar <- renderUI({
+        req(input$isPair != "None")
+        
+        if (input$isPair) {
+          tagList(
+            h3("P-value position"),
+            sliderInput(session$ns("pvalfont"), "P-value font size",
+                        min = 1, max = 10, value = 4),
+            sliderInput(session$ns("pvalx"), "x-axis",
+                        min = 0, max = 1, value = 0.5
+            ),
+            sliderInput(session$ns("pvaly"), "y-axis",
+                        min = 0, max = 1, value = 1
+            ),
+            h3("Pair P-value position"),
+            sliderInput(session$ns("p_pvalfont"), "P-value font size",
+                        min = 1, max = 10, value = 4)
+          )
+        } else {
+          tagList(
+            h3("P-value position"),
+            sliderInput(session$ns("pvalfont"), "P-value font size",
+                        min = 1, max = 10, value = 4),
+            sliderInput(session$ns("pvalx"), "x-axis",
+                        min = 0, max = 1, value = 0.5
+            ),
+            sliderInput(session$ns("pvaly"), "y-axis",
+                        min = 0, max = 1, value = 1
+            ),
+          )
+        }
+      })
 
       return(barInput)
     }
   )
 }
+
+
+
+
 #####
 
 
