@@ -1,10 +1,12 @@
 library(shiny)
 
-source("../module/box.R")
-source("../module/regress.R")
+source("~/ShinyApps/Practice/jsmodule_test/module/box.R")
+source("~/ShinyApps/Practice/jsmodule_test/module/regress.R")
 library(data.table)
+library(ggplot2)
 library(ggpubr)
 library(scales)
+library(shinyWidgets)
 
 
 ui <- fluidPage(
