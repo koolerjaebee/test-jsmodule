@@ -1,10 +1,10 @@
 library(shiny)
 
 source("../module/line.R")
-source("../module/kaplan.R")
 source("../module/regress.R")
 library(data.table)
 library(ggpubr)
+library(scales)
 
 
 ui <- fluidPage(
@@ -13,6 +13,7 @@ ui <- fluidPage(
       lineUI("line")
     ),
     mainPanel(
+      optionUI("line"),
       plotOutput("line_plot"),
       ggplotdownUI("line")
     )

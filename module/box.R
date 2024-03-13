@@ -54,6 +54,34 @@ boxUI <- function(id, label = "boxplot") {
 }
 
 
+# plot option
+optionUI <- function(id) {
+  # Create a namespace function using the provided id
+  ns <- NS(id)
+  
+  shinyWidgets::dropdownButton(
+    uiOutput(ns("option_box")),
+    circle = TRUE, status = "danger", icon = icon("gear"), width = "300px",
+    tooltip = shinyWidgets::tooltipOptions(title = "Click to see other options !")
+  )
+}
+
+
+# Temp
+ggplotdownUI <- function(id) {
+  # Create a namespace function using the provided id
+  ns <- NS(id)
+  
+  tagList(
+    h3("Download options"),
+    wellPanel(
+      uiOutput(ns("downloadControls")),
+      downloadButton(ns("downloadButton"), label = "Download the plot")
+    )
+  )
+}
+
+
 #' @title boxServer: shiny module server for boxplot.
 #' @description Shiny module server for boxplot.
 #' @param id id
@@ -165,22 +193,35 @@ boxServer <- function(id, data, data_label, data_varStruct = NULL, nfactor.limit
         )
       })
       
-      
-      ## pvalue output UI
       output$pvalue <- renderUI({
         req(!is.null(input$x_box))
         
-        nclass_xbox <- input$x_box
-        
-        if (vlist()$nclass_factor[nclass_xbox] < 3) {
-          # Check sample number and set choices
+        if (vlist()$nclass_factor[input$x_box] < 3) {
           tagList(
             checkboxInput(session$ns("isPvalue"), "P value?"),
             radioButtons(
               session$ns("pvalue"),
               "P value test",
               inline = TRUE,
-              choices = c("T-test"="t.test", "Wilcoxon"="wilcox.test"),
+              choices = c("T-test"="t.test", "Wilcoxon"="wilcox.test")
+            ),
+            tabsetPanel(
+              id = session$ns("side_tabset_pval"),
+              type = "hidden",
+              selected = "under_three",
+              tabPanel(
+                "under_three",
+              ),
+              tabPanel(
+                "over_three",
+                checkboxInput(session$ns("isPair"), "Pair sample P value?"),
+                radioButtons(
+                  session$ns("p_pvalue"),
+                  "Pair sample P value test",
+                  inline = TRUE,
+                  choices = c("T-test"="t.test", "Wilcoxon"="wilcox.test")
+                )
+              )
             )
           )
         } else {
@@ -188,19 +229,27 @@ boxServer <- function(id, data, data_label, data_varStruct = NULL, nfactor.limit
             checkboxInput(session$ns("isPvalue"), "P value?"),
             radioButtons(
               session$ns("pvalue"),
-              "P valuse test",
+              "P value test",
               inline = TRUE,
               choices = c("ANOVA"="anova", "Kruskal-Wallis"="kruskal.test")
             ),
-            # Check sample number and set visibility
-            checkboxInput(session$ns("isPair"), "Pair sample P value?"),
-            
-            # Check sample number and set visibility
-            radioButtons(
-              session$ns("p_pvalue"),
-              "Pair sample P value test",
-              inline = TRUE,
-              choices = c("T-test"="t.test", "Wilcoxon"="wilcox.test")
+            tabsetPanel(
+              id = session$ns("side_tabset_pval"),
+              type = "hidden",
+              selected = "over_three",
+              tabPanel(
+                "under_three",
+              ),
+              tabPanel(
+                "over_three",
+                checkboxInput(session$ns("isPair"), "Pair sample P value?"),
+                radioButtons(
+                  session$ns("p_pvalue"),
+                  "Pair sample P value test",
+                  inline = TRUE,
+                  choices = c("T-test"="t.test", "Wilcoxon"="wilcox.test")
+                )
+              )
             )
           )
         }
@@ -226,6 +275,29 @@ boxServer <- function(id, data, data_label, data_varStruct = NULL, nfactor.limit
             )
           )
         })
+      })
+      
+      
+      # Observe xbox
+      observeEvent(input$x_box, {
+        nclass.factor <- vlist()$nclass_factor[input$x_box]
+        
+        if (nclass.factor < 3) {
+          updateTabsetPanel(session, "side_tabset_pval", selected = "under_three")
+          updateTabsetPanel(session, "dropdown_tabset_pval", selected = "under_three")
+        } else {
+          updateTabsetPanel(session, "side_tabset_pval", selected = "over_three")
+          updateTabsetPanel(session, "dropdown_tabset_pval", selected = "over_three")
+        }
+      })
+      
+      
+      # Reset button observe
+      observeEvent(input$pval_reset, {
+        updateSliderInput(session, "pvalfont", value = 4)
+        updateSliderInput(session, "pvalx", value = 0.5)
+        updateSliderInput(session, "pvaly", value = 1)
+        updateSliderInput(session, "p_pvalfont", value = 4)
       })
 
 
@@ -276,31 +348,45 @@ boxServer <- function(id, data, data_label, data_varStruct = NULL, nfactor.limit
         if (input$fillcolor) {
           fillcolor <- "gray"
         }
+        
+        # pval var
+        pval.name <- input$pvalue
+        ppval.name <- input$p_pvalue
+        
+        if (is.null(input$pvalfont)) {
+          pval.font.size <-  c(4, 4, 0.4)
+          pval.coord <-  c(0.5, 1)
+        } else {
+          pval.font.size = c(input$pvalfont, input$p_pvalfont, input$p_pvalfont / 10)
+          pval.coord = c(input$pvalx, input$pvaly)
+        }
+        
         ggpubr::ggboxplot(data, input$x_box, input$y_box,
           color = color, add = add, add.params = add.params, conf.int = input$lineci,
           xlab = label[variable == input$x_box, var_label][1],
           ylab = label[variable == input$y_box, var_label][1], na.rm = T, fill = fillcolor, error.plot = "errorbar",
           bxp.errorbar = input$errorbar
         ) +
-          {
-            if (input$isPvalue) {
-              stat_compare_means(
-                method = input$pvalue,
-                aes(
-                  label = scales::label_pvalue(add_p = TRUE)(..p..)
-                ),
-                size = 6,
-                label.x.npc = "center",
-                label.y.npc = "top"
-              )
-            }
-          } +
-          {if (input$isPair){
-            geom_pwc(
-              method = input$p_pvalue,
+          {if (input$isPvalue) {
+            stat_compare_means(
+              method = pval.name,
+              size = pval.font.size[1],
+              label.x.npc = pval.coord[1],
+              label.y.npc = pval.coord[2],
               aes(
-                label = scales::label_pvalue(add_p = TRUE)(..p..)
-              ))
+                label = scales::label_pvalue(add_p = TRUE)(after_stat(p))
+              ),
+            )
+          }} +
+          {if (input$isPair && vlist()$nclass_factor[input$x_box] > 2) {
+            geom_pwc(
+              method = ppval.name,
+              size = pval.font.size[3],
+              label.size = pval.font.size[2],
+              aes(
+                label = scales::label_pvalue(add_p = TRUE)(after_stat(p))
+              ),
+            )
           }}
       })
 
@@ -358,6 +444,43 @@ boxServer <- function(id, data, data_label, data_varStruct = NULL, nfactor.limit
           )
         }
       )
+      
+      # option dropdown menu
+      output$option_box <- renderUI({
+        
+        if (vlist()$nclass_factor[input$x_box] < 3) {
+          tabset.selected <- "under_three"
+        } else {
+          tabset.selected <- "over_three"
+        }
+        
+        tagList(
+          h3("P-value position"),
+          sliderInput(session$ns("pvalfont"), "P-value font size",
+                      min = 1, max = 10, value = 4),
+          sliderInput(session$ns("pvalx"), "x-axis",
+                      min = 0, max = 1, value = 0.5
+          ),
+          sliderInput(session$ns("pvaly"), "y-axis",
+                      min = 0, max = 1, value = 1
+          ),
+          tabsetPanel(
+            id = session$ns("dropdown_tabset_pval"),
+            type = "hidden",
+            selected = tabset.selected,
+            tabPanel(
+              "under_three",
+            ),
+            tabPanel(
+              "over_three",
+              h3("Pair P-value position"),
+              sliderInput(session$ns("p_pvalfont"), "P-value font size",
+                          min = 1, max = 10, value = 4),
+            )
+          ),
+          actionButton(session$ns("pval_reset"), "reset")
+        )
+      })
 
       return(boxInput)
     }

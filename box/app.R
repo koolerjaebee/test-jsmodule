@@ -1,10 +1,10 @@
 library(shiny)
 
-source("../module/box.R", local = TRUE)
-source("../module/kaplan.R", local = TRUE)
-source("../module/regress.R", local = TRUE)
+source("../module/box.R")
+source("../module/regress.R")
 library(data.table)
 library(ggpubr)
+library(scales)
 
 
 ui <- fluidPage(
@@ -13,6 +13,7 @@ ui <- fluidPage(
       boxUI("box")
     ),
     mainPanel(
+      optionUI("box"),
       plotOutput("box_plot"),
       ggplotdownUI("box"),
     )
