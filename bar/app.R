@@ -1,6 +1,7 @@
 library(shiny)
 
 source("../module/bar.R")
+source("../module/regress.R")
 library(data.table)
 library(ggpubr)
 library(scales)

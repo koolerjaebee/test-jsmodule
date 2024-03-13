@@ -68,6 +68,21 @@ optionUI <- function(id) {
 }
 
 
+# Temp
+ggplotdownUI <- function(id) {
+  # Create a namespace function using the provided id
+  ns <- NS(id)
+  
+  tagList(
+    h3("Download options"),
+    wellPanel(
+      uiOutput(ns("downloadControls")),
+      downloadButton(ns("downloadButton"), label = "Download the plot")
+    )
+  )
+}
+
+
 #' @title barServer: shiny module server for barplot.
 #' @description Shiny module server for barplot.
 #' @param id id
@@ -179,55 +194,119 @@ barServer <- function(id, data, data_label, data_varStruct = NULL, nfactor.limit
       })
       
       
-      ## pvalue output UI
+      # ## pvalue output UI
+      # output$pvalue <- renderUI({
+      #   req(!is.null(input$x_bar))
+      #   
+      #   nclass.xbar <- input$x_bar
+      #   nclass.factor <- vlist()$nclass_factor[nclass.xbar]
+      #   
+      #   value.isPvalue <- isolate(input$isPvalue)
+      #   value.isPair <- isolate(input$isPair)
+      #   
+      #   if (nclass.factor < 3) {
+      #     # Check sample number and set choices
+      #     tagList(
+      #       checkboxInput(session$ns("isPvalue"), "P value?", value = value.isPvalue),
+      #       radioButtons(
+      #         session$ns("pvalue"),
+      #         "P value test",
+      #         inline = TRUE,
+      #         choices = c("T-test"="t.test", "Wilcoxon"="wilcox.test"),
+      #       )
+      #     )
+      #   } else {
+      #     tagList(
+      #       checkboxInput(session$ns("isPvalue"), "P value?", value = value.isPvalue),
+      #       radioButtons(
+      #         session$ns("pvalue"),
+      #         "P value test",
+      #         inline = TRUE,
+      #         choices = c("ANOVA"="anova", "Kruskal-Wallis"="kruskal.test")
+      #       ),
+      #       # Check sample number and set visibility
+      #       checkboxInput(session$ns("isPair"), "Pair sample P value?", value = value.isPair),
+      #       
+      #       # Check sample number and set visibility
+      #       radioButtons(
+      #         session$ns("p_pvalue"),
+      #         "Pair sample P value test",
+      #         inline = TRUE,
+      #         choices = c("T-test"="t.test", "Wilcoxon"="wilcox.test")
+      #       )
+      #     )
+      #   }
+      # })
+      
+      # Refactoring render UI depends on nclass factor numbers
       output$pvalue <- renderUI({
         req(!is.null(input$x_bar))
         
-        nclass.xbar <- input$x_bar
-        nclass.factor <- vlist()$nclass_factor[nclass.xbar]
-        
-        value.isPvalue <- isolate(input$isPvalue)
-        
-        if (nclass.factor < 3) {
-          # Check sample number and set choices
+        if (vlist()$nclass_factor[input$x_bar] < 3) {
           tagList(
-            checkboxInput(session$ns("isPvalue"), "P value?", value = value.isPvalue),
+            checkboxInput(session$ns("isPvalue"), "P value?"),
             radioButtons(
               session$ns("pvalue"),
               "P value test",
               inline = TRUE,
-              choices = c("T-test"="t.test", "Wilcoxon"="wilcox.test"),
+              choices = c("T-test"="t.test", "Wilcoxon"="wilcox.test")
+            ),
+            tabsetPanel(
+              id = session$ns("side_tabset_pval"),
+              type = "hidden",
+              selected = "under_three",
+              tabPanel(
+                "under_three",
+              ),
+              tabPanel(
+                "over_three",
+                checkboxInput(session$ns("isPair"), "Pair sample P value?"),
+                radioButtons(
+                  session$ns("p_pvalue"),
+                  "Pair sample P value test",
+                  inline = TRUE,
+                  choices = c("T-test"="t.test", "Wilcoxon"="wilcox.test")
+                  )
+                )
+              )
             )
-          )
         } else {
           tagList(
-            checkboxInput(session$ns("isPvalue"), "P value?", value = value.isPvalue),
+            checkboxInput(session$ns("isPvalue"), "P value?"),
             radioButtons(
               session$ns("pvalue"),
-              "P valuse test",
+              "P value test",
               inline = TRUE,
               choices = c("ANOVA"="anova", "Kruskal-Wallis"="kruskal.test")
             ),
-            # Check sample number and set visibility
-            checkboxInput(session$ns("isPair"), "Pair sample P value?"),
-            
-            # Check sample number and set visibility
-            radioButtons(
-              session$ns("p_pvalue"),
-              "Pair sample P value test",
-              inline = TRUE,
-              choices = c("T-test"="t.test", "Wilcoxon"="wilcox.test")
+            tabsetPanel(
+              id = session$ns("side_tabset_pval"),
+              type = "hidden",
+              selected = "over_three",
+              tabPanel(
+                "under_three",
+              ),
+              tabPanel(
+                "over_three",
+                checkboxInput(session$ns("isPair"), "Pair sample P value?"),
+                radioButtons(
+                  session$ns("p_pvalue"),
+                  "Pair sample P value test",
+                  inline = TRUE,
+                  choices = c("T-test"="t.test", "Wilcoxon"="wilcox.test")
+                )
+              )
             )
           )
         }
       })
       
-      # Refactoring render UI depends on nclass factor numbers
       
-      # Debugging
-      observeEvent(input$isPair, {
-        message(paste0("input :", input))
-      })
+      # # Debugging
+      # observeEvent(input$x_bar, {
+      #   message(paste0("input$x_bar :", input$x_bar))
+      #   message(paste0("nclass_factor: ", vlist()$nclass_factor[input$x_bar]))
+      # })
       
 
       observeEvent(input$subcheck, {
@@ -249,6 +328,28 @@ barServer <- function(id, data, data_label, data_varStruct = NULL, nfactor.limit
             )
           )
         })
+      })
+      
+      # Observe xbar
+      observeEvent(input$x_bar, {
+        nclass.factor <- vlist()$nclass_factor[input$x_bar]
+        
+        if (nclass.factor < 3) {
+          updateTabsetPanel(session, "side_tabset_pval", selected = "under_three")
+          updateTabsetPanel(session, "dropdown_tabset_pval", selected = "under_three")
+        } else {
+          updateTabsetPanel(session, "side_tabset_pval", selected = "over_three")
+          updateTabsetPanel(session, "dropdown_tabset_pval", selected = "over_three")
+        }
+      })
+      
+      
+      # Reset button observe
+      observeEvent(input$pval_reset, {
+        updateSliderInput(session, "pvalfont", value = 4)
+        updateSliderInput(session, "pvalx", value = 0.5)
+        updateSliderInput(session, "pvaly", value = 1)
+        updateSliderInput(session, "p_pvalfont", value = 4)
       })
 
 
@@ -310,11 +411,11 @@ barServer <- function(id, data, data_label, data_varStruct = NULL, nfactor.limit
         ppval.name <- input$p_pvalue
         
         if (is.null(input$pvalfont)) {
-          pval.font.size = c(4, 4, 0.4)
-          pval.coord = c(0.5, 1)
+          pval.font.size <-  c(4, 4, 0.4) %>% isolate
+          pval.coord <-  c(0.5, 1) %>% isolate
         } else {
-          pval.font.size = c(input$pvalfont, input$p_pvalfont, input$p_pvalfont / 10)
-          pval.coord = c(input$pvalx, input$pvaly)
+          pval.font.size = c(input$pvalfont, input$p_pvalfont, input$p_pvalfont / 10) %>% isolate
+          pval.coord = c(input$pvalx, input$pvaly) %>% isolate
         }
 
         
@@ -332,7 +433,7 @@ barServer <- function(id, data, data_label, data_varStruct = NULL, nfactor.limit
                 label.x.npc = pval.coord[1],
                 label.y.npc = pval.coord[2],
                 aes(
-                  label = scales::label_pvalue(add_p = TRUE)(..p..)
+                  label = scales::label_pvalue(add_p = TRUE)(after_stat(p))
                 ),
               )
             }
@@ -344,7 +445,7 @@ barServer <- function(id, data, data_label, data_varStruct = NULL, nfactor.limit
                     size = pval.font.size[3],
                     label.size = pval.font.size[2],
                     aes(
-                      label = scales::label_pvalue(add_p = TRUE)(..p..)
+                      label = scales::label_pvalue(add_p = TRUE)(after_stat(p))
                       ),
                   )
                   }}
@@ -408,37 +509,93 @@ barServer <- function(id, data, data_label, data_varStruct = NULL, nfactor.limit
       
       # option dropdown menu
       output$option_bar <- renderUI({
-        req(!is.null(input$isPair))
-        req(input$isPair != "None")
         
-        if (input$isPair) {
-          tagList(
-            h3("P-value position"),
-            sliderInput(session$ns("pvalfont"), "P-value font size",
-                        min = 1, max = 10, value = 4),
-            sliderInput(session$ns("pvalx"), "x-axis",
-                        min = 0, max = 1, value = 0.5
-            ),
-            sliderInput(session$ns("pvaly"), "y-axis",
-                        min = 0, max = 1, value = 1
-            ),
-            h3("Pair P-value position"),
-            sliderInput(session$ns("p_pvalfont"), "P-value font size",
-                        min = 1, max = 10, value = 4)
-          )
+        if (vlist()$nclass_factor[input$x_bar] < 3) {
+          tabset.selected <- "under_three"
         } else {
-          tagList(
-            h3("P-value position"),
-            sliderInput(session$ns("pvalfont"), "P-value font size",
-                        min = 1, max = 10, value = 4),
-            sliderInput(session$ns("pvalx"), "x-axis",
-                        min = 0, max = 1, value = 0.5
-            ),
-            sliderInput(session$ns("pvaly"), "y-axis",
-                        min = 0, max = 1, value = 1
-            ),
-          )
+          tabset.selected <- "over_three"
         }
+        
+        tagList(
+          h3("P-value position"),
+          sliderInput(session$ns("pvalfont"), "P-value font size",
+                      min = 1, max = 10, value = 4),
+          sliderInput(session$ns("pvalx"), "x-axis",
+                      min = 0, max = 1, value = 0.5
+          ),
+          sliderInput(session$ns("pvaly"), "y-axis",
+                      min = 0, max = 1, value = 1
+          ),
+          tabsetPanel(
+            id = session$ns("dropdown_tabset_pval"),
+            type = "hidden",
+            selected = tabset.selected,
+            tabPanel(
+              "under_three",
+            ),
+            tabPanel(
+              "over_three",
+              h3("Pair P-value position"),
+              sliderInput(session$ns("p_pvalfont"), "P-value font size",
+                          min = 1, max = 10, value = 4),
+            )
+          ),
+          actionButton(session$ns("pval_reset"), "reset")
+        )
+        
+        # if (input$isPair) {
+        #   tagList(
+        #     h3("P-value position"),
+        #     sliderInput(session$ns("pvalfont"), "P-value font size",
+        #                 min = 1, max = 10, value = 4),
+        #     sliderInput(session$ns("pvalx"), "x-axis",
+        #                 min = 0, max = 1, value = 0.5
+        #     ),
+        #     sliderInput(session$ns("pvaly"), "y-axis",
+        #                 min = 0, max = 1, value = 1
+        #     ),
+        #     tabsetPanel(
+        #       id = session$ns("dropdown_tabset_pval"),
+        #       type = "hidden",
+        #       tabPanel(
+        #         "under three",
+        #       ),
+        #       tabPanel(
+        #         "over three",
+        #         h3("Pair P-value position"),
+        #         sliderInput(session$ns("p_pvalfont"), "P-value font size",
+        #                     min = 1, max = 10, value = 4),
+        #       )
+        #     ),
+        #     actionButton(session$ns("pval_reset"), "reset")
+        #   )
+        # } else {
+        #   tagList(
+        #     h3("P-value position"),
+        #     sliderInput(session$ns("pvalfont"), "P-value font size",
+        #                 min = 1, max = 10, value = 4),
+        #     sliderInput(session$ns("pvalx"), "x-axis",
+        #                 min = 0, max = 1, value = 0.5
+        #     ),
+        #     sliderInput(session$ns("pvaly"), "y-axis",
+        #                 min = 0, max = 1, value = 1
+        #     ),
+        #     tabsetPanel(
+        #       id = session$ns("dropdown_tabset_pval"),
+        #       type = "hidden",
+        #       tabPanel(
+        #         "under three",
+        #       ),
+        #       tabPanel(
+        #         "over three",
+        #         h3("Pair P-value position"),
+        #         sliderInput(session$ns("p_pvalfont"), "P-value font size",
+        #                     min = 1, max = 10, value = 4),
+        #       )
+        #     ),
+        #     actionButton(session$ns("pval_reset"), "reset")
+        #   )
+        # }
       })
 
       return(barInput)
