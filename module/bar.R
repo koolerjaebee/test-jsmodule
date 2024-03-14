@@ -194,75 +194,95 @@ barServer <- function(id, data, data_label, data_varStruct = NULL, nfactor.limit
       })
       
       
-      # Refactoring render UI depends on nclass factor numbers
+      # Refactored render UI depends on nclass factor numbers
       output$pvalue <- renderUI({
         req(!is.null(input$x_bar))
         
+        tglist <- tagList()
+        
         if (vlist()$nclass_factor[input$x_bar] < 3) {
-          tagList(
-            checkboxInput(session$ns("isPvalue"), "P value?"),
-            radioButtons(
-              session$ns("pvalue"),
-              "P value test",
-              inline = TRUE,
-              choices = c("T-test"="t.test", "Wilcoxon"="wilcox.test")
-            ),
-            tabsetPanel(
-              id = session$ns("side_tabset_pval"),
-              type = "hidden",
-              selected = "under_three",
-              tabPanel(
-                "under_three",
-              ),
-              tabPanel(
-                "over_three",
-                checkboxInput(session$ns("isPair"), "Pair sample P value?"),
-                radioButtons(
-                  session$ns("p_pvalue"),
-                  "Pair sample P value test",
-                  inline = TRUE,
-                  choices = c("T-test"="t.test", "Wilcoxon"="wilcox.test")
-                  )
-                )
-              )
-            )
+          pval.choices <-  c("T-test"="t.test", "Wilcoxon"="wilcox.test")
         } else {
-          tagList(
-            checkboxInput(session$ns("isPvalue"), "P value?"),
-            radioButtons(
-              session$ns("pvalue"),
-              "P value test",
-              inline = TRUE,
-              choices = c("ANOVA"="anova", "Kruskal-Wallis"="kruskal.test")
+          pval.choices <- c("ANOVA"="anova", "Kruskal-Wallis"="kruskal.test")
+        }
+        
+        tglist <- tagAppendChildren(
+          tglist,
+          div("P value Option") %>% strong,
+          tabsetPanel(
+            id = session$ns("side_tabset_pval"),
+            type = "hidden",
+            selected = "strataFalse",
+            tabPanel(
+              "strataTrue",
+              NULL
             ),
-            tabsetPanel(
-              id = session$ns("side_tabset_pval"),
-              type = "hidden",
-              selected = "over_three",
-              tabPanel(
-                "under_three",
+            tabPanel(
+              "strataFalse",
+              checkboxInput(session$ns("isPvalue"), "P value?"),
+            )
+          ),
+          tabsetPanel(
+            id = session$ns("side_tabset_pvalradio"),
+            type = "hidden",
+            selected = "isPvalueFalse",
+            tabPanel(
+              "isPvalueTrue",
+              radioButtons(
+                session$ns("pvalue"),
+                label = NULL,
+                inline = TRUE,
+                choices = pval.choices
               ),
-              tabPanel(
-                "over_three",
-                checkboxInput(session$ns("isPair"), "Pair sample P value?"),
-                radioButtons(
-                  session$ns("p_pvalue"),
-                  "Pair sample P value test",
-                  inline = TRUE,
-                  choices = c("T-test"="t.test", "Wilcoxon"="wilcox.test")
-                )
-              )
+            ),
+            tabPanel(
+              "isPvalueFalse",
+              NULL
+            )
+          ),
+          tabsetPanel(
+            id = session$ns("side_tabset_ppval"),
+            type = "hidden",
+            selected = "under_three",
+            tabPanel(
+              "under_three",
+              NULL
+            ),
+            tabPanel(
+              "over_three",
+              checkboxInput(session$ns("isPair"), "Pair sample P value?"),
+            )
+          ),
+          tabsetPanel(
+            id = session$ns("side_tabset_ppvalradio"),
+            type = "hidden",
+            selected = "isPairFalse",
+            tabPanel(
+              "isPairTrue",
+              radioButtons(
+                session$ns("p_pvalue"),
+                label = NULL,
+                inline = TRUE,
+                choices = c("T-test"="t_test", "Wilcoxon"="wilcox_test")
+              ),
+            ),
+            tabPanel(
+              "isPairFalse",
+              NULL
             )
           )
-        }
+        )
+        
+        return(tglist)
       })
       
       
-      # # Debugging
-      # observeEvent(input$x_bar, {
-      #   message(paste0("input$x_bar :", input$x_bar))
-      #   message(paste0("nclass_factor: ", vlist()$nclass_factor[input$x_bar]))
-      # })
+      # Debugging
+      observeEvent(input$strata, {
+        message("--------------Start--------------")
+        message(data() %>% names)
+        message("---------------End---------------")
+      })
       
 
       observeEvent(input$subcheck, {
@@ -289,16 +309,25 @@ barServer <- function(id, data, data_label, data_varStruct = NULL, nfactor.limit
       # Observe xbar
       observeEvent(input$x_bar, {
         nclass.factor <- vlist()$nclass_factor[input$x_bar]
-        
         if (nclass.factor < 3) {
-          updateTabsetPanel(session, "side_tabset_pval", selected = "under_three")
-          updateTabsetPanel(session, "dropdown_tabset_pval", selected = "under_three")
+          tabset.selected <- "under_three"
         } else {
-          updateTabsetPanel(session, "side_tabset_pval", selected = "over_three")
-          updateTabsetPanel(session, "dropdown_tabset_pval", selected = "over_three")
+          tabset.selected <- "over_three" 
         }
+        
+        updateTabsetPanel(session, "side_tabset_ppval", selected = tabset.selected)
+        updateTabsetPanel(session, "dropdown_tabset_pval", selected = tabset.selected)
       })
       
+      # Observe strata
+      observeEvent(input$strata, {
+        if (input$strata != "None") {
+          tabset.selected <- "strataTrue"
+        } else {
+          tabset.selected <- "strataFalse"
+        }
+        updateTabsetPanel(session, "side_tabset_pval", selected = tabset.selected)
+      })
       
       # Reset button observe
       observeEvent(input$pval_reset, {
@@ -307,8 +336,12 @@ barServer <- function(id, data, data_label, data_varStruct = NULL, nfactor.limit
         updateSliderInput(session, "pvaly", value = 1)
         updateSliderInput(session, "p_pvalfont", value = 4)
       })
-
-
+      
+      observeEvent(input$isPvalue, updateTabsetPanel(session, "side_tabset_pvalradio", selected = ifelse(input$isPvalue, "isPvalueTrue", "isPvalueFalse")))
+      
+      observeEvent(input$isPair, updateTabsetPanel(session, "side_tabset_ppvalradio", selected = ifelse(input$isPair, "isPairTrue", "isPairFalse")))
+      
+      
       output$subval <- renderUI({
         req(input$subcheck == T)
         req(length(input$subvar_km) > 0)
@@ -381,27 +414,33 @@ barServer <- function(id, data, data_label, data_varStruct = NULL, nfactor.limit
           ylab = label[variable == input$y_bar, var_label][1], na.rm = T,
           position = position_dodge(), fill = fill,
         ) +
-          {if (input$isPvalue) {
-              stat_compare_means(
-                method = pval.name,
-                size = pval.font.size[1],
-                label.x.npc = pval.coord[1],
-                label.y.npc = pval.coord[2],
-                aes(
-                  label = scales::label_pvalue(add_p = TRUE)(after_stat(p))
-                ),
+          {if (input$isPvalue && input$strata == "None") {
+            stat_compare_means(
+              method = pval.name,
+              size = pval.font.size[1],
+              label.x.npc = pval.coord[1],
+              label.y.npc = pval.coord[2],
+              aes(
+                label = scales::label_pvalue(add_p = TRUE)(after_stat(p))
+              ),
+            )
+          }} +
+          {if (input$isPair && vlist()$nclass_factor[input$x_bar] > 2 && input$strata == "None") {
+              geom_pwc(
+                method = ppval.name,
+                size = pval.font.size[3],
+                label.size = pval.font.size[2],
+                aes(label = scales::label_pvalue(add_p = TRUE)(after_stat(p))),
               )
-            }} +
-              {if (input$isPair && vlist()$nclass_factor[input$x_bar] > 2) {
-                  geom_pwc(
-                    method = ppval.name,
-                    size = pval.font.size[3],
-                    label.size = pval.font.size[2],
-                    aes(
-                      label = scales::label_pvalue(add_p = TRUE)(after_stat(p))
-                      ),
-                  )
-              }}
+          }} + 
+          {if (input$isPair && input$strata != "None") {
+            geom_pwc(
+              method = ppval.name,
+              size = pval.font.size[3],
+              label.size = pval.font.size[2],
+              aes(label = scales::label_pvalue(add_p = TRUE)(after_stat(p)), group = !!sym(input$strata))
+            )
+          }}
         })
 
       output$downloadControls <- renderUI({
