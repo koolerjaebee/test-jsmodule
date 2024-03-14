@@ -51,8 +51,8 @@ lineUI <- function(id, label = "lineplot") {
     uiOutput(ns("pvalue")),  # new feat. pvalue on plot
     uiOutput(ns("subvar")),
     uiOutput(ns("subval")),
-    uiOutput(ns("size")),
-    uiOutput(ns("position.dodge"))
+    # uiOutput(ns("size")),
+    # uiOutput(ns("position.dodge"))
   )
 }
 
@@ -295,23 +295,26 @@ lineServer <- function(id, data, data_label, data_varStruct = NULL, nfactor.limi
       
       # Reset button observe
       observeEvent(input$pval_reset, {
+        updateNumericInput(session, "size", value = 0.5)
+        updateNumericInput(session, "pointsize", value = 0.5)
+        updateSliderInput(session, "positiondodge", value = 0)
         updateSliderInput(session, "pvalfont", value = 4)
         updateSliderInput(session, "pvalx", value = 0.5)
         updateSliderInput(session, "pvaly", value = 1)
         updateSliderInput(session, "p_pvalfont", value = 4)
       })
       
-      output$size <- renderUI({
-        tagList(
-          fluidRow(
-            column(6, numericInput(session$ns("size"), "Line size", value = 0.5)),
-            column(6, numericInput(session$ns("pointsize"), "Point size", value = 0.5))
-          )
-        )
-      })
-      output$position.dodge <- renderUI({
-        sliderInput(session$ns("positiondodge"), "Position dodge", min = 0, max = 1, value = 0)
-      })
+      # output$size <- renderUI({
+      #   tagList(
+      #     fluidRow(
+      #       column(6, numericInput(session$ns("size"), "Line size", value = 0.5)),
+      #       column(6, numericInput(session$ns("pointsize"), "Point size", value = 0.5))
+      #     )
+      #   )
+      # })
+      # output$position.dodge <- renderUI({
+      #   sliderInput(session$ns("positiondodge"), "Position dodge", min = 0, max = 1, value = 0)
+      # })
 
       output$subval <- renderUI({
         req(input$subcheck == T)
@@ -394,8 +397,10 @@ lineServer <- function(id, data, data_label, data_varStruct = NULL, nfactor.limi
           xlab = label[variable == input$x_line, var_label][1],
           ylab = label[variable == input$y_line, var_label][1], na.rm = T,
           position = position_dodge(input$positiondodge),
-          size = input$size,
-          point.size = input$pointsize,
+          # size = input$size,
+          size = ifelse(is.null(input$size), 0.5, input$size),
+          # point.size = input$pointsize,
+          point.size = ifelse(is.null(input$pointsize), 0.5, input$pointsize),
           linetype = linetype
         ) +
           {if (input$isPvalue) {
@@ -492,6 +497,12 @@ lineServer <- function(id, data, data_label, data_varStruct = NULL, nfactor.limi
         }
         
         tagList(
+          h3("Line setting"),
+          fluidRow(
+            column(6, numericInput(session$ns("size"), "Line size", step = 0.5, value = 0.5)),
+            column(6, numericInput(session$ns("pointsize"), "Point size", step = 0.5, value = 0.5))
+          ),
+          sliderInput(session$ns("positiondodge"), "Position dodge", min = 0, max = 1, value = 0),
           h3("P-value position"),
           sliderInput(session$ns("pvalfont"), "P-value font size",
                       min = 1, max = 10, value = 4),
