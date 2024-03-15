@@ -309,10 +309,10 @@ barServer <- function(id, data, data_label, data_varStruct = NULL, nfactor.limit
       
       
       # Debugging
-      observeEvent(input$strata, {
-        message("--------------Start--------------")
-        message(input$strata)
-        message("---------------End---------------")
+      observeEvent(input$x_bar , {
+        # message("--------------Start--------------")
+        # message(head(order(data()[,"ph.ecog"]), 10))
+        # message("---------------End---------------")
       })
       
 
@@ -337,21 +337,27 @@ barServer <- function(id, data, data_label, data_varStruct = NULL, nfactor.limit
         })
       })
       
+      
       # Observe xbar
       observeEvent(input$x_bar, {
         nclass.factor <- vlist()$nclass_factor[input$x_bar]
-        if (nclass.factor < 3) {
-          tabset.selected <- "under_three"
-        } else {
+        if (nclass.factor > 2 & input$strata == "None") {
           tabset.selected <- "over_three" 
+        } else {
+          tabset.selected <- "under_three"
         }
         
         updateTabsetPanel(session, "side_tabset_ppval", selected = tabset.selected)
-        updateTabsetPanel(session, "dropdown_tabset_pval", selected = tabset.selected)
       })
       
       # Observe strata
       observeEvent(input$strata, {
+        updateTabsetPanel(session, "side_tabset_ppval", selected = "under_three")
+        
+        updateCheckboxInput(session, "isPvalue", value = FALSE)
+        updateCheckboxInput(session, "isPair", value = FALSE)
+        updateCheckboxInput(session, "isStrata", value = FALSE)
+        
         if (input$strata != "None") {
           tabset.selected <- "strataTrue"
         } else {
@@ -442,13 +448,30 @@ barServer <- function(id, data, data_label, data_varStruct = NULL, nfactor.limit
           pval.coord = c(input$pvalx, input$pvaly)
         }
         
-        ggpubr::ggbarplot(data, input$x_bar, input$y_bar,
+        # # Testing
+        # summary(data)
+        # temp <- geom_pwc(
+        #   data = data,
+        #   method = ppval.name,
+        #   method.args = list(
+        #     comparisons = list(c("1", "2"), c("1", "3"))
+        #   ),
+        #   size = pval.font.size[3],
+        #   label.size = pval.font.size[2],
+        #   aes(label = scales::label_pvalue(add_p = TRUE)(after_stat(p)), group = !!sym(input$strata))
+        #   )
+        
+        
+        # ggbarplot
+        res.plot <- ggpubr::ggbarplot(data, input$x_bar, input$y_bar,
           color = color, add = add, add.params = add.params, conf.int = input$lineci,
           xlab = label[variable == input$x_bar, var_label][1],
           ylab = label[variable == input$y_bar, var_label][1], na.rm = T,
           position = position_dodge(), fill = fill,
-        ) +
-          {if (input$isPvalue && input$strata == "None") {
+        )
+        
+        if (input$isPvalue & input$strata == "None") {
+          res.plot <- res.plot +
             stat_compare_means(
               method = pval.name,
               size = pval.font.size[1],
@@ -458,23 +481,30 @@ barServer <- function(id, data, data_label, data_varStruct = NULL, nfactor.limit
                 label = scales::label_pvalue(add_p = TRUE)(after_stat(p))
               ),
             )
-          }} +
-          {if (input$isPair && vlist()$nclass_factor[input$x_bar] > 2 && input$strata == "None") {
-              geom_pwc(
-                method = ppval.name,
-                size = pval.font.size[3],
-                label.size = pval.font.size[2],
-                aes(label = scales::label_pvalue(add_p = TRUE)(after_stat(p))),
-              )
-          }} + 
-          {if (input$isStrata && input$strata != "None") {
+        }
+
+        if (input$isPair & vlist()$nclass_factor[input$x_bar] > 2 & input$strata == "None") {
+          res.plot <- res.plot +
             geom_pwc(
               method = ppval.name,
               size = pval.font.size[3],
               label.size = pval.font.size[2],
+              aes(label = scales::label_pvalue(add_p = TRUE)(after_stat(p))),
+            )
+        }
+
+        if (input$isStrata & input$strata != "None") {
+          res.plot <- res.plot +
+            geom_pwc(
+              method = ppval.name,
+              size = pval.font.size[3],
+              label.size = pval.font.size[2],
+              # aes(label = scales::label_pvalue(add_p = TRUE)(after_stat(p)))
               aes(label = scales::label_pvalue(add_p = TRUE)(after_stat(p)), group = !!sym(input$strata))
             )
-          }}
+        }
+        
+        return(res.plot)
         })
 
       output$downloadControls <- renderUI({
@@ -536,10 +566,11 @@ barServer <- function(id, data, data_label, data_varStruct = NULL, nfactor.limit
       # option dropdown menu
       output$option_bar <- renderUI({
         
-        if (vlist()$nclass_factor[input$x_bar] < 3) {
-          tabset.selected <- "under_three"
+        nclass.factor <- vlist()$nclass_factor[input$x_bar]
+        if (nclass.factor > 2 & input$strata == "None") {
+          tabset.selected <- "over_three" 
         } else {
-          tabset.selected <- "over_three"
+          tabset.selected <- "under_three"
         }
         
         tagList(
@@ -547,26 +578,13 @@ barServer <- function(id, data, data_label, data_varStruct = NULL, nfactor.limit
           sliderInput(session$ns("pvalfont"), "P-value font size",
                       min = 1, max = 10, value = 4),
           sliderInput(session$ns("pvalx"), "x-axis",
-                      min = 0, max = 1, value = 0.5
-          ),
+                      min = 0, max = 1, value = 0.5),
           sliderInput(session$ns("pvaly"), "y-axis",
-                      min = 0, max = 1, value = 1
-          ),
-          tabsetPanel(
-            id = session$ns("dropdown_tabset_pval"),
-            type = "hidden",
-            selected = tabset.selected,
-            tabPanel(
-              "under_three",
-            ),
-            tabPanel(
-              "over_three",
-              h3("Pair P-value position"),
-              sliderInput(session$ns("p_pvalfont"), "P-value font size",
-                          min = 1, max = 10, value = 4),
-            )
-          ),
-          actionButton(session$ns("pval_reset"), "reset")
+                      min = 0, max = 1, value = 1),
+          h3("Pair P-value position"),
+          sliderInput(session$ns("p_pvalfont"), "P-value font size",
+                      min = 1, max = 10, value = 4),
+          actionButton(session$ns("pval_reset"), "reset"),
         )
         
       })

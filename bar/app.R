@@ -1,5 +1,5 @@
 library(shiny)
-
+options(shiny.sanitize.errors = F)
 source("~/ShinyApps/Practice/jsmodule_test/module/bar.R")
 source("~/ShinyApps/Practice/jsmodule_test/module/regress.R")
 library(data.table)
