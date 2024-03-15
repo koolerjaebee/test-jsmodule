@@ -270,6 +270,37 @@ barServer <- function(id, data, data_label, data_varStruct = NULL, nfactor.limit
               "isPairFalse",
               NULL
             )
+          ),
+          tabsetPanel(
+            id = session$ns("side_tabset_isstrata"),
+            type = "hidden",
+            selected = "strataFalse",
+            tabPanel(
+              "strataTrue",
+              checkboxInput(session$ns("isStrata"), "Pair sample P value?"),
+            ),
+            tabPanel(
+              "strataFalse",
+              NULL
+            )
+          ),
+          tabsetPanel(
+            id = session$ns("side_tabset_spvalradio"),
+            type = "hidden",
+            selected = "isStrataFalse",
+            tabPanel(
+              "isStrataTrue",
+              radioButtons(
+                session$ns("s_pvalue"),
+                label = NULL,
+                inline = TRUE,
+                choices = c("T-test"="t_test", "Wilcoxon"="wilcox_test")
+              )
+            ),
+            tabPanel(
+              "isStrataFalse",
+              NULL
+            )
           )
         )
         
@@ -280,7 +311,7 @@ barServer <- function(id, data, data_label, data_varStruct = NULL, nfactor.limit
       # Debugging
       observeEvent(input$strata, {
         message("--------------Start--------------")
-        message(data() %>% names)
+        message(input$strata)
         message("---------------End---------------")
       })
       
@@ -327,6 +358,7 @@ barServer <- function(id, data, data_label, data_varStruct = NULL, nfactor.limit
           tabset.selected <- "strataFalse"
         }
         updateTabsetPanel(session, "side_tabset_pval", selected = tabset.selected)
+        updateTabsetPanel(session, "side_tabset_isstrata", selected = tabset.selected)
       })
       
       # Reset button observe
@@ -338,8 +370,8 @@ barServer <- function(id, data, data_label, data_varStruct = NULL, nfactor.limit
       })
       
       observeEvent(input$isPvalue, updateTabsetPanel(session, "side_tabset_pvalradio", selected = ifelse(input$isPvalue, "isPvalueTrue", "isPvalueFalse")))
-      
       observeEvent(input$isPair, updateTabsetPanel(session, "side_tabset_ppvalradio", selected = ifelse(input$isPair, "isPairTrue", "isPairFalse")))
+      observeEvent(input$isStrata, updateTabsetPanel(session, "side_tabset_spvalradio", selected = ifelse(input$isStrata, "isStrataTrue", "isStrataFalse")))
       
       
       output$subval <- renderUI({
@@ -367,9 +399,10 @@ barServer <- function(id, data, data_label, data_varStruct = NULL, nfactor.limit
       
       
       barInput <- reactive({
-        req(c(input$x_bar, input$y_bar, input$strata, input$pvalue, input$pvalx, input$pvaly, input$pvalfont, input$p_pvalue, input$p_pvalfont))
+        req(c(input$x_bar, input$y_bar, input$strata, input$pvalue, input$pvalx, input$pvaly, input$pvalfont, input$p_pvalue, input$p_pvalfont), input$s_pvalue)
         req(input$isPair != "None")
         req(input$isPvalue != "None")
+        req(input$isStrata != "None")
         
         data <- data.table(data())
         label <- data_label()
@@ -399,6 +432,7 @@ barServer <- function(id, data, data_label, data_varStruct = NULL, nfactor.limit
         # pval var
         pval.name <- input$pvalue
         ppval.name <- input$p_pvalue
+        spval.name <- input$s_pvalue
         
         if (is.null(input$pvalfont)) {
           pval.font.size <-  c(4, 4, 0.4)
@@ -433,7 +467,7 @@ barServer <- function(id, data, data_label, data_varStruct = NULL, nfactor.limit
                 aes(label = scales::label_pvalue(add_p = TRUE)(after_stat(p))),
               )
           }} + 
-          {if (input$isPair && input$strata != "None") {
+          {if (input$isStrata && input$strata != "None") {
             geom_pwc(
               method = ppval.name,
               size = pval.font.size[3],

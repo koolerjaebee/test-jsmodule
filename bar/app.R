@@ -23,11 +23,24 @@ ui <- fluidPage(
 )
 
 
-d1 <- mtcars
-d1$cyl <- as.factor(d1$cyl)
-d1$gear <- as.factor(d1$gear)
-d1$vs <- as.factor(d1$vs)
+# d1 <- mtcars
+# d1$cyl <- as.factor(d1$cyl)
+# d1$gear <- as.factor(d1$gear)
+# d1$vs <- as.factor(d1$vs)
 
+
+d1 <- read.csv("~/ShinyApps/Practice/jsmodule_test/data/example_basic.csv", header = T)
+
+vars.fac <- c()
+for (x in 1:ncol(d1)) {
+  if(d1[,x] %>% unique %>% unlist %>% length < 6) {
+    vars.fac <- append(vars.fac, x)
+  }
+}
+
+for (x in vars.fac) {
+  d1[,x] <- as.factor(d1[,x])
+}
 
 server <- function(input, output, session) {
   
