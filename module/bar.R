@@ -308,29 +308,25 @@ barServer <- function(id, data, data_label, data_varStruct = NULL, nfactor.limit
       })
       
       
-      # Debugging
-      observeEvent(input$x_bar , {
-        # message("--------------Start--------------")
-        # message(head(order(data()[,"ph.ecog"]), 10))
-        # message("---------------End---------------")
-      })
+      # # Debugging
+      # observeEvent(input$x_bar , {
+      #   message("--------------Start--------------")
+      #   message(head(order(data()[,"ph.ecog"]), 10))
+      #   message("---------------End---------------")
+      # })
       
+      # Error message popup
       barInputError <- reactive({
         tryCatch({
           print(barInput() %>% suppressWarnings)
         }, warning = function(e) {
-          message(str(e))
-          if (!is.na(e$parent$parent$parent$parent$message)) {
-            return(e$parent$parent$parent$parent$message)
-          } else if (!is.na(e$parent$parent$parent$message)) {
-            return(e$parent$parent$parent$message)
-          } else if (!is.na(e$parent$parent$message)) {
-            return(e$parent$parent$message)
-          } else if (!is.na(e$parent$message)) {
-            return(e$parent$message)
-          } else {
-            return(e$message)
+          res <- e
+          temp <- e
+          while(!is.null(temp$message)) {
+            res <- temp
+            temp <- temp$parent
           }
+          return(res$message)
         }, error = function(e) {
           return(e$message)
         })
@@ -361,6 +357,9 @@ barServer <- function(id, data, data_label, data_varStruct = NULL, nfactor.limit
       
       # Observe xbar
       observeEvent(input$x_bar, {
+        msg <- barInputError()
+        if (!is.ggplot(msg)) showNotification(msg, type = "warning")
+        
         nclass.factor <- vlist()$nclass_factor[input$x_bar]
         if (nclass.factor > 2 & input$strata == "None") {
           tabset.selected <- "over_three" 
@@ -372,6 +371,9 @@ barServer <- function(id, data, data_label, data_varStruct = NULL, nfactor.limit
       
       # Observe strata
       observeEvent(input$strata, {
+        msg <- barInputError()
+        if (!is.ggplot(msg)) showNotification(msg, type = "warning")
+        
         updateTabsetPanel(session, "side_tabset_ppval", selected = "under_three")
         updateCheckboxInput(session, "isPvalue", value = FALSE)
         updateCheckboxInput(session, "isPair", value = FALSE)
@@ -396,48 +398,35 @@ barServer <- function(id, data, data_label, data_varStruct = NULL, nfactor.limit
       # Observe isPvalue & isPair & isStrata
       observeEvent(input$isPvalue, {
         msg <- barInputError()
-        if (!is.ggplot(msg)) {
-          showNotification(msg, type = "warning")
-        }
+        if (!is.ggplot(msg)) showNotification(msg, type = "warning")
         updateTabsetPanel(session, "side_tabset_pvalradio", selected = ifelse(input$isPvalue, "isPvalueTrue", "isPvalueFalse"))
       })
       
       observeEvent(input$isPair, {
         msg <- barInputError()
-        message(str(msg))
-        if (!is.ggplot(msg)) {
-          showNotification(msg, type = "warning")
-        }
+        if (!is.ggplot(msg)) showNotification(msg, type = "warning")
         updateTabsetPanel(session, "side_tabset_ppvalradio", selected = ifelse(input$isPair, "isPairTrue", "isPairFalse"))
       })
       
       observeEvent(input$isStrata, {
         msg <- barInputError()
-        if (!is.ggplot(msg)) {
-          showNotification(msg, type = "warning")
-        }
+        if (!is.ggplot(msg)) showNotification(msg, type = "warning")
         updateTabsetPanel(session, "side_tabset_spvalradio", selected = ifelse(input$isStrata, "isStrataTrue", "isStrataFalse"))
       })
       
       observeEvent(input$pvalue, {
         msg <- barInputError()
-        if (!is.ggplot(msg)) {
-          showNotification(msg, type = "warning")
-        }
+        if (!is.ggplot(msg)) showNotification(msg, type = "warning")
       })
       
       observeEvent(input$p_pvalue, {
         msg <- barInputError()
-        if (!is.ggplot(msg)) {
-          showNotification(msg, type = "warning")
-        }
+        if (!is.ggplot(msg)) showNotification(msg, type = "warning")
       })
       
       observeEvent(input$s_pvalue, {
         msg <- barInputError()
-        if (!is.ggplot(msg)) {
-          showNotification(msg, type = "warning")
-        }
+        if (!is.ggplot(msg)) showNotification(msg, type = "warning")
       })
       
       # Reset button observe
