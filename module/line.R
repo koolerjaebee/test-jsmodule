@@ -196,66 +196,50 @@ lineServer <- function(id, data, data_label, data_varStruct = NULL, nfactor.limi
         )
       })
       
+      # Refactored render UI depends on nclass factor numbers
       output$pvalue <- renderUI({
         req(!is.null(input$x_line))
         
-        if (vlist()$nclass_factor[input$x_line] < 3) {
-          tagList(
-            checkboxInput(session$ns("isPvalue"), "P value?"),
-            radioButtons(
-              session$ns("pvalue"),
-              "P value test",
-              inline = TRUE,
-              choices = c("T-test"="t.test", "Wilcoxon"="wilcox.test")
+        tglist <- tagList()
+        
+        
+        tglist <- tagAppendChildren(
+          tglist,
+          div("P value Option") %>% strong,
+          tabsetPanel(
+            id = session$ns("side_tabset_isstrata"),
+            type = "hidden",
+            selected = "strataFalse",
+            tabPanel(
+              "strataTrue",
+              checkboxInput(session$ns("isStrata"), "Pair sample P value?"),
             ),
-            tabsetPanel(
-              id = session$ns("side_tabset_pval"),
-              type = "hidden",
-              selected = "under_three",
-              tabPanel(
-                "under_three",
-              ),
-              tabPanel(
-                "over_three",
-                checkboxInput(session$ns("isPair"), "Pair sample P value?"),
-                radioButtons(
-                  session$ns("p_pvalue"),
-                  "Pair sample P value test",
-                  inline = TRUE,
-                  choices = c("T-test"="t.test", "Wilcoxon"="wilcox.test")
-                )
+            tabPanel(
+              "strataFalse",
+              NULL
+            )
+          ),
+          tabsetPanel(
+            id = session$ns("side_tabset_spvalradio"),
+            type = "hidden",
+            selected = "isStrataFalse",
+            tabPanel(
+              "isStrataTrue",
+              radioButtons(
+                session$ns("s_pvalue"),
+                label = NULL,
+                inline = TRUE,
+                choices = c("T-test"="t.test", "Wilcoxon"="wilcox.test")
               )
+            ),
+            tabPanel(
+              "isStrataFalse",
+              NULL
             )
           )
-        } else {
-          tagList(
-            checkboxInput(session$ns("isPvalue"), "P value?"),
-            radioButtons(
-              session$ns("pvalue"),
-              "P value test",
-              inline = TRUE,
-              choices = c("ANOVA"="anova", "Kruskal-Wallis"="kruskal.test")
-            ),
-            tabsetPanel(
-              id = session$ns("side_tabset_pval"),
-              type = "hidden",
-              selected = "over_three",
-              tabPanel(
-                "under_three",
-              ),
-              tabPanel(
-                "over_three",
-                checkboxInput(session$ns("isPair"), "Pair sample P value?"),
-                radioButtons(
-                  session$ns("p_pvalue"),
-                  "Pair sample P value test",
-                  inline = TRUE,
-                  choices = c("T-test"="t.test", "Wilcoxon"="wilcox.test")
-                )
-              )
-            )
-          )
-        }
+        )
+        
+        return(tglist)
       })
       
       
@@ -280,17 +264,76 @@ lineServer <- function(id, data, data_label, data_varStruct = NULL, nfactor.limi
         })
       })
       
+      # Error message popup
+      lineInputError <- reactive({
+        tryCatch({
+          print(lineInput() %>% suppressWarnings)
+        }, warning = function(e) {
+          res <- e
+          temp <- e
+          while(!is.null(temp$message)) {
+            res <- temp
+            temp <- temp$parent
+          }
+          return(res$message)
+        }, error = function(e) {
+          return(e$message)
+        })
+      })
+      
+      
+      observeEvent(input$subcheck, {
+        output$subvar <- renderUI({
+          req(input$subcheck == T)
+          req(!is.null(input$x_line))
+          
+          var_subgroup <- setdiff(names(data()), c(vlist()$except_vars, input$x_line, input$y_line, input$strata))
+          
+          var_subgroup_list <- mklist(data_varStruct(), var_subgroup)
+          validate(
+            need(length(var_subgroup) > 0, "No variables for sub-group analysis")
+          )
+          
+          tagList(
+            selectInput(session$ns("subvar_km"), "Sub-group variables",
+                        choices = var_subgroup_list, multiple = T,
+                        selected = var_subgroup[1]
+            )
+          )
+        })
+      })
+      
+      
       # Observe xline
       observeEvent(input$x_line, {
-        nclass.factor <- vlist()$nclass_factor[input$x_line]
+        msg <- lineInputError()
+        if (!is.ggplot(msg)) showNotification(msg, type = "warning")
+      })
+      
+      # Observe strata
+      observeEvent(input$strata, {
+        msg <- lineInputError()
+        if (!is.ggplot(msg)) showNotification(msg, type = "warning")
         
-        if (nclass.factor < 3) {
-          updateTabsetPanel(session, "side_tabset_pval", selected = "under_three")
-          updateTabsetPanel(session, "dropdown_tabset_pval", selected = "under_three")
+        if (input$strata != "None") {
+          tabset.selected.strata <- "strataTrue"
         } else {
-          updateTabsetPanel(session, "side_tabset_pval", selected = "over_three")
-          updateTabsetPanel(session, "dropdown_tabset_pval", selected = "over_three")
+          tabset.selected.strata <- "strataFalse"
         }
+        
+        updateCheckboxInput(session, "isStrata", value = FALSE)
+        updateTabsetPanel(session, "side_tabset_isstrata", selected = tabset.selected.strata)
+      })
+      
+      observeEvent(input$isStrata, {
+        msg <- lineInputError()
+        if (!is.ggplot(msg)) showNotification(msg, type = "warning")
+        updateTabsetPanel(session, "side_tabset_spvalradio", selected = ifelse(input$isStrata, "isStrataTrue", "isStrataFalse"))
+      })
+      
+      observeEvent(input$s_pvalue, {
+        msg <- lineInputError()
+        if (!is.ggplot(msg)) showNotification(msg, type = "warning")
       })
       
       # Reset button observe
@@ -298,11 +341,11 @@ lineServer <- function(id, data, data_label, data_varStruct = NULL, nfactor.limi
         updateNumericInput(session, "size", value = 0.5)
         updateNumericInput(session, "pointsize", value = 0.5)
         updateSliderInput(session, "positiondodge", value = 0)
-        updateSliderInput(session, "pvalfont", value = 4)
+        updateSliderInput(session, "p_pvalfont", value = 4)
         updateSliderInput(session, "pvalx", value = 0.5)
         updateSliderInput(session, "pvaly", value = 1)
-        updateSliderInput(session, "p_pvalfont", value = 4)
       })
+      
       
       # output$size <- renderUI({
       #   tagList(
@@ -340,9 +383,8 @@ lineServer <- function(id, data, data_label, data_varStruct = NULL, nfactor.limi
       })
 
       lineInput <- reactive({
-        req(c(input$x_line, input$y_line, input$strata))
-        req(input$isPvalue != "None")
-        req(input$isPair != "None")
+        req(c(input$x_line, input$y_line, input$strata, input$pvalfont, input$s_pvalue, input$positiondodge))
+        req(input$isStrata != "None")
         
         data <- data.table(data())
         label <- data_label()
@@ -381,14 +423,13 @@ lineServer <- function(id, data, data_label, data_varStruct = NULL, nfactor.limi
         
         
         # pval var
-        pval.name <- input$pvalue
-        ppval.name <- input$p_pvalue
+        spval.name <- input$s_pvalue
         
         if (is.null(input$pvalfont)) {
-          pval.font.size <-  c(4, 4, 0.4)
+          pval.font.size <-  c(4, 0.4)
           pval.coord <-  c(0.5, 1)
         } else {
-          pval.font.size = c(input$pvalfont, input$p_pvalfont, input$p_pvalfont / 10)
+          pval.font.size = c(input$p_pvalfont, input$p_pvalfont / 10)
           pval.coord = c(input$pvalx, input$pvaly)
         }
 
@@ -396,16 +437,21 @@ lineServer <- function(id, data, data_label, data_varStruct = NULL, nfactor.limi
           color = color, add = add, add.params = add.params, conf.int = input$lineci,
           xlab = label[variable == input$x_line, var_label][1],
           ylab = label[variable == input$y_line, var_label][1], na.rm = T,
-          position = position_dodge(input$positiondodge),
+          # position = position_dodge(input$positiondodge),
+          position = position_dodge(ifelse(is.null(input$positiondodge), 0, input$positiondodge)),
           # size = input$size,
           size = ifelse(is.null(input$size), 0.5, input$size),
           # point.size = input$pointsize,
           point.size = ifelse(is.null(input$pointsize), 0.5, input$pointsize),
           linetype = linetype
-        ) +
-          {if (input$isPvalue) {
+        )
+        
+        
+        # Need to change under_three | over_three logic
+        if (input$isStrata & input$strata != "None") {
+          res.plot <- res.plot +
             stat_compare_means(
-              method = pval.name,
+              method = spval.name,
               size = pval.font.size[1],
               label.x.npc = pval.coord[1],
               label.y.npc = pval.coord[2],
@@ -413,18 +459,8 @@ lineServer <- function(id, data, data_label, data_varStruct = NULL, nfactor.limi
                 label = scales::label_pvalue(add_p = TRUE)(after_stat(p))
               ),
             )
-          }} +
-          {if (input$isPair && vlist()$nclass_factor[input$x_line] > 2) {
-            geom_pwc(
-              method = ppval.name,
-              size = pval.font.size[3],
-              label.size = pval.font.size[2],
-              aes(
-                label = scales::label_pvalue(add_p = TRUE)(after_stat(p))
-              ),
-            )
-          }}
-
+        }
+        
         if (input$rev_y) {
           res.plot <- res.plot + ggplot2::scale_y_reverse()
         }
@@ -490,12 +526,6 @@ lineServer <- function(id, data, data_label, data_varStruct = NULL, nfactor.limi
       # option dropdown menu
       output$option_line <- renderUI({
         
-        if (vlist()$nclass_factor[input$x_line] < 3) {
-          tabset.selected <- "under_three"
-        } else {
-          tabset.selected <- "over_three"
-        }
-        
         tagList(
           h3("Line setting"),
           fluidRow(
@@ -504,27 +534,13 @@ lineServer <- function(id, data, data_label, data_varStruct = NULL, nfactor.limi
           ),
           sliderInput(session$ns("positiondodge"), "Position dodge", min = 0, max = 1, value = 0),
           h3("P-value position"),
-          sliderInput(session$ns("pvalfont"), "P-value font size",
+          sliderInput(session$ns("p_pvalfont"), "P-value font size",
                       min = 1, max = 10, value = 4),
           sliderInput(session$ns("pvalx"), "x-axis",
                       min = 0, max = 1, value = 0.5
           ),
           sliderInput(session$ns("pvaly"), "y-axis",
                       min = 0, max = 1, value = 1
-          ),
-          tabsetPanel(
-            id = session$ns("dropdown_tabset_pval"),
-            type = "hidden",
-            selected = tabset.selected,
-            tabPanel(
-              "under_three",
-            ),
-            tabPanel(
-              "over_three",
-              h3("Pair P-value position"),
-              sliderInput(session$ns("p_pvalfont"), "P-value font size",
-                          min = 1, max = 10, value = 4),
-            )
           ),
           actionButton(session$ns("pval_reset"), "reset")
         )

@@ -463,7 +463,7 @@ barServer <- function(id, data, data_label, data_varStruct = NULL, nfactor.limit
       
       
       barInput <- reactive({
-        req(c(input$x_bar, input$y_bar, input$strata, input$pvalue, input$pvalx, input$pvaly, input$pvalfont, input$p_pvalue, input$p_pvalfont), input$s_pvalue)
+        req(c(input$x_bar, input$y_bar, input$strata, input$pvalue, input$pvalx, input$pvaly, input$pvalfont, input$p_pvalue, input$p_pvalfont, input$s_pvalue))
         req(input$isPair != "None")
         req(input$isPvalue != "None")
         req(input$isStrata != "None")
@@ -506,22 +506,6 @@ barServer <- function(id, data, data_label, data_varStruct = NULL, nfactor.limit
           pval.coord = c(input$pvalx, input$pvaly)
         }
         
-        # # Testing
-        # summary(data)
-        # temp <- geom_pwc(
-        #   data = data,
-        #   method = ppval.name,
-        #   method.args = list(
-        #     comparisons = list(c("1", "2"), c("1", "3"))
-        #   ),
-        #   size = pval.font.size[3],
-        #   label.size = pval.font.size[2],
-        #   aes(label = scales::label_pvalue(add_p = TRUE)(after_stat(p)), group = !!sym(input$strata))
-        #   )
-        
-        # Logic testing proper data
-        
-        
         
         # ggbarplot
         res.plot <- ggpubr::ggbarplot(data, input$x_bar, input$y_bar,
@@ -557,7 +541,7 @@ barServer <- function(id, data, data_label, data_varStruct = NULL, nfactor.limit
         if (input$isStrata & input$strata != "None") {
           res.plot <- res.plot +
             geom_pwc(
-              method = ppval.name,
+              method = spval.name,
               size = pval.font.size[3],
               label.size = pval.font.size[2],
               # aes(label = scales::label_pvalue(add_p = TRUE)(after_stat(p)))
