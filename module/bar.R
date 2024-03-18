@@ -346,25 +346,30 @@ barServer <- function(id, data, data_label, data_varStruct = NULL, nfactor.limit
         } else {
           tabset.selected <- "under_three"
         }
-        
         updateTabsetPanel(session, "side_tabset_ppval", selected = tabset.selected)
       })
       
       # Observe strata
       observeEvent(input$strata, {
         updateTabsetPanel(session, "side_tabset_ppval", selected = "under_three")
-        
         updateCheckboxInput(session, "isPvalue", value = FALSE)
         updateCheckboxInput(session, "isPair", value = FALSE)
         updateCheckboxInput(session, "isStrata", value = FALSE)
         
+        nclass.factor <- vlist()$nclass_factor[input$x_bar]
         if (input$strata != "None") {
-          tabset.selected <- "strataTrue"
+          tabset.selected.strata <- "strataTrue"
+          tabset.selected.nclass <- "under_three"
+        } else if (nclass.factor > 2) {
+          tabset.selected.strata <- "strataFalse"
+          tabset.selected.nclass <- "over_three"
         } else {
-          tabset.selected <- "strataFalse"
+          tabset.selected.strata <- "strataFalse"
+          tabset.selected.nclass <- "under_three"
         }
-        updateTabsetPanel(session, "side_tabset_pval", selected = tabset.selected)
-        updateTabsetPanel(session, "side_tabset_isstrata", selected = tabset.selected)
+        updateTabsetPanel(session, "side_tabset_pval", selected = tabset.selected.strata)
+        updateTabsetPanel(session, "side_tabset_isstrata", selected = tabset.selected.strata)
+        updateTabsetPanel(session, "side_tabset_ppval", selected = tabset.selected.nclass)
       })
       
       # Reset button observe
@@ -460,6 +465,9 @@ barServer <- function(id, data, data_label, data_varStruct = NULL, nfactor.limit
         #   label.size = pval.font.size[2],
         #   aes(label = scales::label_pvalue(add_p = TRUE)(after_stat(p)), group = !!sym(input$strata))
         #   )
+        
+        # Logic testing proper data
+        
         
         
         # ggbarplot
