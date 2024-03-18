@@ -67,6 +67,12 @@ optionUI <- function(id) {
   )
 }
 
+ggplotErrorUI <- function(id) {
+  ns <- NS(id)
+  
+  verbatimTextOutput(ns("ggplot_warnings"))
+}
+
 
 # Temp
 ggplotdownUI <- function(id) {
@@ -372,6 +378,13 @@ barServer <- function(id, data, data_label, data_varStruct = NULL, nfactor.limit
         updateTabsetPanel(session, "side_tabset_ppval", selected = tabset.selected.nclass)
       })
       
+      # Observe isPair & isStrata
+      observeEvent(input$isPair, {
+        geom_pwc(
+          method = input$p_pvalue,
+        )
+      })
+      
       # Reset button observe
       observeEvent(input$pval_reset, {
         updateSliderInput(session, "pvalfont", value = 4)
@@ -514,6 +527,22 @@ barServer <- function(id, data, data_label, data_varStruct = NULL, nfactor.limit
         
         return(res.plot)
         })
+      
+      barInputError <- reactive({
+        tryCatch({
+          print(barInput() %>% suppressWarnings)
+        }, message = function(e) {
+          return(e$message)
+        }, warning = function(e) {
+          return(e$parent$parent$message)
+        }, error = function(e) {
+          return(e$message)
+        })
+      })
+
+      output$ggplot_warnings <- renderPrint({
+        barInputError()
+      })
 
       output$downloadControls <- renderUI({
         tagList(

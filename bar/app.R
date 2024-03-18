@@ -17,7 +17,8 @@ ui <- fluidPage(
     mainPanel(
       optionUI("bar"),
       plotOutput("bar_plot"),
-      ggplotdownUI("bar")
+      ggplotErrorUI("bar"),
+      ggplotdownUI("bar"),
     )
   ),
 )
