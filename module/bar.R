@@ -50,7 +50,7 @@ barUI <- function(id, label = "barplot") {
     checkboxInput(ns("jitter"), "Jitter"),
     uiOutput(ns("pvalue")),  # new feat. pvalue on plot
     uiOutput(ns("subvar")),
-    uiOutput(ns("subval"))
+    uiOutput(ns("subval")),
   )
 }
 
@@ -65,12 +65,6 @@ optionUI <- function(id) {
     circle = TRUE, status = "danger", icon = icon("gear"), width = "300px",
     tooltip = shinyWidgets::tooltipOptions(title = "Click to see other options !")
   )
-}
-
-ggplotErrorUI <- function(id) {
-  ns <- NS(id)
-  
-  verbatimTextOutput(ns("ggplot_warnings"))
 }
 
 
@@ -321,6 +315,27 @@ barServer <- function(id, data, data_label, data_varStruct = NULL, nfactor.limit
         # message("---------------End---------------")
       })
       
+      barInputError <- reactive({
+        tryCatch({
+          print(barInput() %>% suppressWarnings)
+        }, warning = function(e) {
+          message(str(e))
+          if (!is.na(e$parent$parent$parent$parent$message)) {
+            return(e$parent$parent$parent$parent$message)
+          } else if (!is.na(e$parent$parent$parent$message)) {
+            return(e$parent$parent$parent$message)
+          } else if (!is.na(e$parent$parent$message)) {
+            return(e$parent$parent$message)
+          } else if (!is.na(e$parent$message)) {
+            return(e$parent$message)
+          } else {
+            return(e$message)
+          }
+        }, error = function(e) {
+          return(e$message)
+        })
+      })
+      
 
       observeEvent(input$subcheck, {
         output$subvar <- renderUI({
@@ -378,11 +393,51 @@ barServer <- function(id, data, data_label, data_varStruct = NULL, nfactor.limit
         updateTabsetPanel(session, "side_tabset_ppval", selected = tabset.selected.nclass)
       })
       
-      # Observe isPair & isStrata
+      # Observe isPvalue & isPair & isStrata
+      observeEvent(input$isPvalue, {
+        msg <- barInputError()
+        if (!is.ggplot(msg)) {
+          showNotification(msg, type = "warning")
+        }
+        updateTabsetPanel(session, "side_tabset_pvalradio", selected = ifelse(input$isPvalue, "isPvalueTrue", "isPvalueFalse"))
+      })
+      
       observeEvent(input$isPair, {
-        geom_pwc(
-          method = input$p_pvalue,
-        )
+        msg <- barInputError()
+        message(str(msg))
+        if (!is.ggplot(msg)) {
+          showNotification(msg, type = "warning")
+        }
+        updateTabsetPanel(session, "side_tabset_ppvalradio", selected = ifelse(input$isPair, "isPairTrue", "isPairFalse"))
+      })
+      
+      observeEvent(input$isStrata, {
+        msg <- barInputError()
+        if (!is.ggplot(msg)) {
+          showNotification(msg, type = "warning")
+        }
+        updateTabsetPanel(session, "side_tabset_spvalradio", selected = ifelse(input$isStrata, "isStrataTrue", "isStrataFalse"))
+      })
+      
+      observeEvent(input$pvalue, {
+        msg <- barInputError()
+        if (!is.ggplot(msg)) {
+          showNotification(msg, type = "warning")
+        }
+      })
+      
+      observeEvent(input$p_pvalue, {
+        msg <- barInputError()
+        if (!is.ggplot(msg)) {
+          showNotification(msg, type = "warning")
+        }
+      })
+      
+      observeEvent(input$s_pvalue, {
+        msg <- barInputError()
+        if (!is.ggplot(msg)) {
+          showNotification(msg, type = "warning")
+        }
       })
       
       # Reset button observe
@@ -392,10 +447,6 @@ barServer <- function(id, data, data_label, data_varStruct = NULL, nfactor.limit
         updateSliderInput(session, "pvaly", value = 1)
         updateSliderInput(session, "p_pvalfont", value = 4)
       })
-      
-      observeEvent(input$isPvalue, updateTabsetPanel(session, "side_tabset_pvalradio", selected = ifelse(input$isPvalue, "isPvalueTrue", "isPvalueFalse")))
-      observeEvent(input$isPair, updateTabsetPanel(session, "side_tabset_ppvalradio", selected = ifelse(input$isPair, "isPairTrue", "isPairFalse")))
-      observeEvent(input$isStrata, updateTabsetPanel(session, "side_tabset_spvalradio", selected = ifelse(input$isStrata, "isStrataTrue", "isStrataFalse")))
       
       
       output$subval <- renderUI({
@@ -527,22 +578,6 @@ barServer <- function(id, data, data_label, data_varStruct = NULL, nfactor.limit
         
         return(res.plot)
         })
-      
-      barInputError <- reactive({
-        tryCatch({
-          print(barInput() %>% suppressWarnings)
-        }, message = function(e) {
-          return(e$message)
-        }, warning = function(e) {
-          return(e$parent$parent$message)
-        }, error = function(e) {
-          return(e$message)
-        })
-      })
-
-      output$ggplot_warnings <- renderPrint({
-        barInputError()
-      })
 
       output$downloadControls <- renderUI({
         tagList(
