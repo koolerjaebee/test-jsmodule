@@ -317,7 +317,7 @@ barServer <- function(id, data, data_label, data_varStruct = NULL, nfactor.limit
       
       # Error message popup
       barInputError <- reactive({
-        tryCatch({
+        msg <- tryCatch({
           print(barInput() %>% suppressWarnings)
         }, warning = function(e) {
           res <- e
@@ -330,6 +330,8 @@ barServer <- function(id, data, data_label, data_varStruct = NULL, nfactor.limit
         }, error = function(e) {
           return(e$message)
         })
+        
+        ifelse (!is.ggplot(msg), msg, "Success")
       })
       
 
@@ -358,7 +360,7 @@ barServer <- function(id, data, data_label, data_varStruct = NULL, nfactor.limit
       # Observe xbar
       observeEvent(input$x_bar, {
         msg <- barInputError()
-        if (!is.ggplot(msg)) showNotification(msg, type = "warning")
+        if (msg != "" & msg != "Success") showNotification(msg, type = "warning")
         
         nclass.factor <- vlist()$nclass_factor[input$x_bar]
         if (nclass.factor > 2 & input$strata == "None") {
@@ -372,7 +374,7 @@ barServer <- function(id, data, data_label, data_varStruct = NULL, nfactor.limit
       # Observe strata
       observeEvent(input$strata, {
         msg <- barInputError()
-        if (!is.ggplot(msg)) showNotification(msg, type = "warning")
+        if (msg != "" & msg != "Success") showNotification(msg, type = "warning")
         
         updateTabsetPanel(session, "side_tabset_ppval", selected = "under_three")
         updateCheckboxInput(session, "isPvalue", value = FALSE)
@@ -398,35 +400,35 @@ barServer <- function(id, data, data_label, data_varStruct = NULL, nfactor.limit
       # Observe isPvalue & isPair & isStrata
       observeEvent(input$isPvalue, {
         msg <- barInputError()
-        if (!is.ggplot(msg)) showNotification(msg, type = "warning")
+        if (msg != "" & msg != "Success") showNotification(msg, type = "warning")
         updateTabsetPanel(session, "side_tabset_pvalradio", selected = ifelse(input$isPvalue, "isPvalueTrue", "isPvalueFalse"))
       })
       
       observeEvent(input$isPair, {
         msg <- barInputError()
-        if (!is.ggplot(msg)) showNotification(msg, type = "warning")
+        if (msg != "" & msg != "Success") showNotification(msg, type = "warning")
         updateTabsetPanel(session, "side_tabset_ppvalradio", selected = ifelse(input$isPair, "isPairTrue", "isPairFalse"))
       })
       
       observeEvent(input$isStrata, {
         msg <- barInputError()
-        if (!is.ggplot(msg)) showNotification(msg, type = "warning")
+        if (msg != "" & msg != "Success") showNotification(msg, type = "warning")
         updateTabsetPanel(session, "side_tabset_spvalradio", selected = ifelse(input$isStrata, "isStrataTrue", "isStrataFalse"))
       })
       
       observeEvent(input$pvalue, {
         msg <- barInputError()
-        if (!is.ggplot(msg)) showNotification(msg, type = "warning")
+        if (msg != "" & msg != "Success") showNotification(msg, type = "warning")
       })
       
       observeEvent(input$p_pvalue, {
         msg <- barInputError()
-        if (!is.ggplot(msg)) showNotification(msg, type = "warning")
+        if (msg != "" & msg != "Success") showNotification(msg, type = "warning")
       })
       
       observeEvent(input$s_pvalue, {
         msg <- barInputError()
-        if (!is.ggplot(msg)) showNotification(msg, type = "warning")
+        if (msg != "" & msg != "Success") showNotification(msg, type = "warning")
       })
       
       # Reset button observe

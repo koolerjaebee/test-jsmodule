@@ -201,7 +201,15 @@ lineServer <- function(id, data, data_label, data_varStruct = NULL, nfactor.limi
         req(!is.null(input$x_line))
         
         tglist <- tagList()
-        
+        if (input$strata != "None") {
+          if (vlist()$nclass_factor[input$strata] < 3) {
+            pval.choices <-  c("T-test"="t.test", "Wilcoxon"="wilcox.test")
+          } else {
+            pval.choices <- c("ANOVA"="anova", "Kruskal-Wallis"="kruskal.test")
+          }
+        } else {
+          pval.choices <- c("ANOVA"="anova", "Kruskal-Wallis"="kruskal.test")
+        }
         
         tglist <- tagAppendChildren(
           tglist,
@@ -212,7 +220,7 @@ lineServer <- function(id, data, data_label, data_varStruct = NULL, nfactor.limi
             selected = "strataFalse",
             tabPanel(
               "strataTrue",
-              checkboxInput(session$ns("isStrata"), "Pair sample P value?"),
+              checkboxInput(session$ns("isStrata"), "P value?"),
             ),
             tabPanel(
               "strataFalse",
@@ -229,7 +237,7 @@ lineServer <- function(id, data, data_label, data_varStruct = NULL, nfactor.limi
                 session$ns("s_pvalue"),
                 label = NULL,
                 inline = TRUE,
-                choices = c("T-test"="t.test", "Wilcoxon"="wilcox.test")
+                choices = pval.choices
               )
             ),
             tabPanel(
@@ -266,7 +274,7 @@ lineServer <- function(id, data, data_label, data_varStruct = NULL, nfactor.limi
       
       # Error message popup
       lineInputError <- reactive({
-        tryCatch({
+        msg <- tryCatch({
           print(lineInput() %>% suppressWarnings)
         }, warning = function(e) {
           res <- e
@@ -279,6 +287,8 @@ lineServer <- function(id, data, data_label, data_varStruct = NULL, nfactor.limi
         }, error = function(e) {
           return(e$message)
         })
+        
+        ifelse (!is.ggplot(msg), msg, "Success")
       })
       
       
@@ -307,13 +317,13 @@ lineServer <- function(id, data, data_label, data_varStruct = NULL, nfactor.limi
       # Observe xline
       observeEvent(input$x_line, {
         msg <- lineInputError()
-        if (!is.ggplot(msg)) showNotification(msg, type = "warning")
+        if (msg != "" & msg != "Success") showNotification(msg, type = "warning")
       })
       
       # Observe strata
       observeEvent(input$strata, {
         msg <- lineInputError()
-        if (!is.ggplot(msg)) showNotification(msg, type = "warning")
+        if (msg != "" & msg != "Success") showNotification(msg, type = "warning")
         
         if (input$strata != "None") {
           tabset.selected.strata <- "strataTrue"
@@ -327,13 +337,13 @@ lineServer <- function(id, data, data_label, data_varStruct = NULL, nfactor.limi
       
       observeEvent(input$isStrata, {
         msg <- lineInputError()
-        if (!is.ggplot(msg)) showNotification(msg, type = "warning")
+        if (msg != "" & msg != "Success") showNotification(msg, type = "warning")
         updateTabsetPanel(session, "side_tabset_spvalradio", selected = ifelse(input$isStrata, "isStrataTrue", "isStrataFalse"))
       })
       
       observeEvent(input$s_pvalue, {
         msg <- lineInputError()
-        if (!is.ggplot(msg)) showNotification(msg, type = "warning")
+        if (msg != "" & msg != "Success") showNotification(msg, type = "warning")
       })
       
       # Reset button observe
@@ -341,9 +351,7 @@ lineServer <- function(id, data, data_label, data_varStruct = NULL, nfactor.limi
         updateNumericInput(session, "size", value = 0.5)
         updateNumericInput(session, "pointsize", value = 0.5)
         updateSliderInput(session, "positiondodge", value = 0)
-        updateSliderInput(session, "p_pvalfont", value = 4)
-        updateSliderInput(session, "pvalx", value = 0.5)
-        updateSliderInput(session, "pvaly", value = 1)
+        updateSliderInput(session, "pvalfont", value = 4)
       })
       
       
@@ -426,11 +434,9 @@ lineServer <- function(id, data, data_label, data_varStruct = NULL, nfactor.limi
         spval.name <- input$s_pvalue
         
         if (is.null(input$pvalfont)) {
-          pval.font.size <-  c(4, 0.4)
-          pval.coord <-  c(0.5, 1)
+          pval.font.size <-  4
         } else {
-          pval.font.size = c(input$p_pvalfont, input$p_pvalfont / 10)
-          pval.coord = c(input$pvalx, input$pvaly)
+          pval.font.size = input$pvalfont
         }
 
         res.plot <- ggpubr::ggline(data, input$x_line, input$y_line,
@@ -452,11 +458,10 @@ lineServer <- function(id, data, data_label, data_varStruct = NULL, nfactor.limi
           res.plot <- res.plot +
             stat_compare_means(
               method = spval.name,
-              size = pval.font.size[1],
-              label.x.npc = pval.coord[1],
-              label.y.npc = pval.coord[2],
+              size = pval.font.size,
               aes(
-                label = scales::label_pvalue(add_p = TRUE)(after_stat(p))
+                label = scales::label_pvalue(add_p = TRUE)(after_stat(p)),
+                group = !!sym(input$strata)
               ),
             )
         }
@@ -534,14 +539,8 @@ lineServer <- function(id, data, data_label, data_varStruct = NULL, nfactor.limi
           ),
           sliderInput(session$ns("positiondodge"), "Position dodge", min = 0, max = 1, value = 0),
           h3("P-value position"),
-          sliderInput(session$ns("p_pvalfont"), "P-value font size",
+          sliderInput(session$ns("pvalfont"), "P-value font size",
                       min = 1, max = 10, value = 4),
-          sliderInput(session$ns("pvalx"), "x-axis",
-                      min = 0, max = 1, value = 0.5
-          ),
-          sliderInput(session$ns("pvaly"), "y-axis",
-                      min = 0, max = 1, value = 1
-          ),
           actionButton(session$ns("pval_reset"), "reset")
         )
       })

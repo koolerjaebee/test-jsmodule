@@ -309,7 +309,7 @@ boxServer <- function(id, data, data_label, data_varStruct = NULL, nfactor.limit
 
       # Error message popup
       boxInputError <- reactive({
-        tryCatch({
+        msg <- tryCatch({
           print(boxInput() %>% suppressWarnings)
         }, warning = function(e) {
           res <- e
@@ -323,6 +323,8 @@ boxServer <- function(id, data, data_label, data_varStruct = NULL, nfactor.limit
           print(str(e))
           return(e$message)
         })
+        
+        ifelse (!is.ggplot(msg), msg, "Success")
       })
       
       
@@ -351,7 +353,7 @@ boxServer <- function(id, data, data_label, data_varStruct = NULL, nfactor.limit
       # Observe xbox
       observeEvent(input$x_box, {
         msg <- boxInputError()
-        if (!is.ggplot(msg)) showNotification(msg, type = "warning")
+        if (msg != "" & msg != "Success") showNotification(msg, type = "warning")
         
         nclass.factor <- vlist()$nclass_factor[input$x_box]
         if (nclass.factor > 2 & input$strata == "None") {
@@ -365,7 +367,7 @@ boxServer <- function(id, data, data_label, data_varStruct = NULL, nfactor.limit
       # Observe strata
       observeEvent(input$strata, {
         msg <- boxInputError()
-        if (!is.ggplot(msg)) showNotification(msg, type = "warning")
+        if (msg != "" & msg != "Success") showNotification(msg, type = "warning")
         
         updateTabsetPanel(session, "side_tabset_ppval", selected = "under_three")
         updateCheckboxInput(session, "isPvalue", value = FALSE)
@@ -391,7 +393,7 @@ boxServer <- function(id, data, data_label, data_varStruct = NULL, nfactor.limit
       # Observe isPvalue & isPair & isStrata
       observeEvent(input$isPvalue, {
         msg <- boxInputError()
-        if (!is.ggplot(msg)) showNotification(msg, type = "warning")
+        if (msg != "" & msg != "Success") showNotification(msg, type = "warning")
         updateTabsetPanel(session, "side_tabset_pvalradio", selected = ifelse(input$isPvalue, "isPvalueTrue", "isPvalueFalse"))
       })
       
@@ -403,23 +405,23 @@ boxServer <- function(id, data, data_label, data_varStruct = NULL, nfactor.limit
       
       observeEvent(input$isStrata, {
         msg <- boxInputError()
-        if (!is.ggplot(msg)) showNotification(msg, type = "warning")
+        if (msg != "" & msg != "Success") showNotification(msg, type = "warning")
         updateTabsetPanel(session, "side_tabset_spvalradio", selected = ifelse(input$isStrata, "isStrataTrue", "isStrataFalse"))
       })
       
       observeEvent(input$pvalue, {
         msg <- boxInputError()
-        if (!is.ggplot(msg)) showNotification(msg, type = "warning")
+        if (msg != "" & msg != "Success") showNotification(msg, type = "warning")
       })
       
       observeEvent(input$p_pvalue, {
         msg <- boxInputError()
-        if (!is.ggplot(msg)) showNotification(msg, type = "warning")
+        if (msg != "" & msg != "Success") showNotification(msg, type = "warning")
       })
       
       observeEvent(input$s_pvalue, {
         msg <- boxInputError()
-        if (!is.ggplot(msg)) showNotification(msg, type = "warning")
+        if (msg != "" & msg != "Success") showNotification(msg, type = "warning")
       })
       
       # Reset button observe
