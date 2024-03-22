@@ -15,7 +15,7 @@ ui <- fluidPage(
       boxUI("box")
     ),
     mainPanel(
-      optionUI("box"),
+      optionboxUI("box"),
       plotOutput("box_plot"),
       ggplotdownUI("box"),
     )

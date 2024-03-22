@@ -15,7 +15,7 @@ ui <- fluidPage(
       barUI("bar")
     ),
     mainPanel(
-      optionUI("bar"),
+      optionbarUI("bar"),
       plotOutput("bar_plot"),
       ggplotdownUI("bar"),
     )

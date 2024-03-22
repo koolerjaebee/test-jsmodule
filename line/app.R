@@ -2,6 +2,7 @@ library(shiny)
 
 source("~/ShinyApps/Practice/jsmodule_test/module/line.R")
 source("~/ShinyApps/Practice/jsmodule_test/module/regress.R")
+source("~/ShinyApps/Practice/jsmodule_test/module/kaplan.R")
 library(data.table)
 library(ggplot2)
 library(ggpubr)
@@ -15,7 +16,7 @@ ui <- fluidPage(
       lineUI("line")
     ),
     mainPanel(
-      optionUI("line"),
+      optionlineUI("line"),
       plotOutput("line_plot"),
       ggplotdownUI("line")
     )

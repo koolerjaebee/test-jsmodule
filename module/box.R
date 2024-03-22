@@ -55,7 +55,7 @@ boxUI <- function(id, label = "boxplot") {
 
 
 # plot option
-optionUI <- function(id) {
+optionboxUI <- function(id) {
   # Create a namespace function using the provided id
   ns <- NS(id)
   
@@ -457,7 +457,7 @@ boxServer <- function(id, data, data_label, data_varStruct = NULL, nfactor.limit
       })
 
       boxInput <- reactive({
-        req(c(input$x_bar, input$y_bar, input$strata, input$pvalue, input$pvalx, input$pvaly, input$pvalfont, input$p_pvalue, input$p_pvalfont, input$s_pvalue))
+        req(c(input$x_box, input$y_box, input$strata, input$pvalue, input$pvalx, input$pvaly, input$pvalfont, input$p_pvalue, input$p_pvalfont, input$s_pvalue))
         req(input$isPvalue != "None")
         req(input$isPair != "None")
         

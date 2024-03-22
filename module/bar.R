@@ -56,7 +56,7 @@ barUI <- function(id, label = "barplot") {
 
 
 # plot option
-optionUI <- function(id) {
+optionbarUI <- function(id) {
   # Create a namespace function using the provided id
   ns <- NS(id)
 

@@ -59,7 +59,7 @@ lineUI <- function(id, label = "lineplot") {
 
 
 # plot option
-optionUI <- function(id) {
+optionlineUI <- function(id) {
   # Create a namespace function using the provided id
   ns <- NS(id)
   
